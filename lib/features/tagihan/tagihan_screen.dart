@@ -16,7 +16,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
   List<Map<String, dynamic>> _lunasTagihan = [];
   List<Map<String, dynamic>> _filteredLunas = [];
   
-  String _filterType = 'Semua'; // Semua, Minggu, Bulan
+  String _filterType = 'Semua';
   bool _isLoading = true;
 
   @override
@@ -76,17 +76,11 @@ class _TagihanScreenState extends State<TagihanScreen> {
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
               slivers: [
-                // SEKSI BELUM BAYAR
                 _buildSliverHeader('BELUM BAYAR (${_pendingTagihan.length})', Colors.red),
                 _buildSliverList(_pendingTagihan, isLunas: false),
-
-                // DIVIDER & FILTER SEKSI LUNAS
                 _buildSliverHeader('SUDAH BAYAR (${_filteredLunas.length})', Colors.green),
                 _buildSliverFilter(),
-                
-                // SEKSI SUDAH BAYAR
                 _buildSliverList(_filteredLunas, isLunas: true),
-                
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
@@ -161,7 +155,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
                 border: Border.all(color: isLunas ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1)),
               ),
               child: ListTile(
-                onTap: isLunas ? null : () => _showPaymentDialog(t),
+                onTap: () => isLunas ? _showDetailDialog(t) : _showPaymentDialog(t),
                 leading: Icon(isLunas ? Icons.check_circle : Icons.pending, color: isLunas ? Colors.green : Colors.red),
                 title: Text(t['pelanggan']['nama'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 subtitle: Text('Pakai: ${t['pemakaian']} m³ ${isLunas ? '(${t['metode_bayar']})' : ''}', style: const TextStyle(fontSize: 11)),
@@ -180,11 +174,77 @@ class _TagihanScreenState extends State<TagihanScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi Bayar'),
-        content: Text('Pelanggan: ${t['pelanggan']['nama']}\nTotal: ${formatRupiah(t['total_bayar'])}'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Konfirmasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
+            _buildDetailRow('Meter Lalu', '${t['meter_lalu']} m³'),
+            _buildDetailRow('Meter Baru', '${t['meter_skrg']} m³'),
+            _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
+            const Divider(),
+            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => _prosesBayar(t['id'], 'CASH'), child: const Text('💰 CASH')),
-          ElevatedButton(onPressed: () => _prosesBayar(t['id'], 'BANK'), child: const Text('🏦 BANK')),
+          TextButton.icon(
+            onPressed: () => _prosesBayar(t['id'], 'CASH'),
+            icon: const Icon(Icons.money),
+            label: const Text('CASH'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            onPressed: () => _prosesBayar(t['id'], 'BANK'),
+            icon: const Icon(Icons.account_balance, color: Colors.white),
+            label: const Text('BANK', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDetailDialog(Map<String, dynamic> t) {
+    final tglBayar = t['tanggal_bayar'] != null 
+        ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(t['tanggal_bayar']))
+        : '-';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Rincian Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
+            _buildDetailRow('Status', 'LUNAS', color: Colors.green),
+            _buildDetailRow('Metode', t['metode_bayar'] ?? '-'),
+            _buildDetailRow('Tgl Bayar', tglBayar),
+            const Divider(),
+            _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
+            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isBold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(value, style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: color ?? Colors.black,
+            fontSize: 13,
+          )),
         ],
       ),
     );

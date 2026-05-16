@@ -59,6 +59,7 @@ class SupabaseService {
     await client.from('transaksi').update({
       'status': 'LUNAS',
       'metode_bayar': metode,
+      'tanggal_bayar': DateTime.now().toIso8601String(),
     }).eq('id', id);
   }
 
