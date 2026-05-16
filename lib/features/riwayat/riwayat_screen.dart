@@ -110,6 +110,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _detailRow('Nama', t['pelanggan']['nama']),
+            _detailRow('WhatsApp', t['pelanggan']['telepon'] ?? '-'),
             _detailRow('Tanggal', DateFormat('dd MMMM yyyy').format(DateTime.parse(t['tanggal_catat']))),
             const Divider(),
             _detailRow('Meter Lalu', '${t['meter_lalu']} m³'),

@@ -26,6 +26,10 @@ class SupabaseService {
     await client.from('pelanggan').update(data).eq('id', id);
   }
 
+  Future<void> deletePelanggan(String id) async {
+    await client.from('pelanggan').delete().eq('id', id);
+  }
+
   // --- CRUD Transaksi ---
   Future<void> insertTransaksi(Map<String, dynamic> data) async {
     // 1. Simpan Transaksi

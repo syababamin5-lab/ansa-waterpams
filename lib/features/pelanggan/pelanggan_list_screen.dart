@@ -100,9 +100,15 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
             _detailItem('Alamat', p['alamat'] ?? '-'),
             _detailItem('WhatsApp', p['telepon'] ?? '-'),
             _detailItem('Meter Terakhir', '${p['meter_terakhir']} m³'),
+            _detailItem('ID', p['id'].toString().substring(0, 8)), // Menampilkan ID singkat
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _confirmDelete(p),
+          ),
+          const Spacer(),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Tutup'),
@@ -113,7 +119,30 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
               _showAddEditDialog(context, p: p);
             },
             icon: const Icon(Icons.edit, size: 18),
-            label: const Text('Edit Data'),
+            label: const Text('Edit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(Map<String, dynamic> p) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Pelanggan?'),
+        content: Text('Anda yakin ingin menghapus ${p['nama']}? Semua riwayat transaksinya juga mungkin akan bermasalah.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(
+            onPressed: () async {
+              await _supabaseService.deletePelanggan(p['id']);
+              Navigator.pop(context); // Close confirm
+              Navigator.pop(context); // Close detail
+              _refreshPelanggan();
+              _showSnackBar("Pelanggan berhasil dihapus");
+            }, 
+            child: const Text('Hapus', style: TextStyle(color: Colors.red))
           ),
         ],
       ),
@@ -179,6 +208,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                         double.tryParse(meterController.text) ?? 0,
                       );
                     } else {
+                      // MEMASTIKAN UPDATE MENGGUNAKAN ID YANG BENAR
                       await _supabaseService.updatePelanggan(p['id'], {
                         'nama': nameController.text,
                         'alamat': addressController.text,
