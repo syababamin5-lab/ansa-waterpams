@@ -55,6 +55,15 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  Future<List<Map<String, dynamic>>> getTransaksiByPelanggan(String idPelanggan) async {
+    final response = await client
+        .from('transaksi')
+        .select('*')
+        .eq('id_pelanggan', idPelanggan)
+        .order('tanggal_catat', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
   Future<void> updatePembayaran(String id, String metode) async {
     await client.from('transaksi').update({
       'status': 'LUNAS',

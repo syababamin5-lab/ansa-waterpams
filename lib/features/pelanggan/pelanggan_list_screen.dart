@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/database/supabase_service.dart';
 
@@ -100,7 +102,23 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
             _detailItem('Alamat', p['alamat'] ?? '-'),
             _detailItem('WhatsApp', p['telepon'] ?? '-'),
             _detailItem('Meter Terakhir', '${p['meter_terakhir']} m³'),
-            _detailItem('ID', p['id'].toString().substring(0, 8)), // Menampilkan ID singkat
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showUsageChart(p);
+                },
+                icon: const Icon(Icons.bar_chart),
+                label: const Text('Rincian Pemakaian Air'),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -126,6 +144,90 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
     );
   }
 
+  void _showUsageChart(Map<String, dynamic> p) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final history = await _supabaseService.getTransaksiByPelanggan(p['id']);
+      Navigator.pop(context); // Close loading
+
+      // Ambil 12 data terakhir
+      final recentHistory = history.length > 12 
+          ? history.sublist(history.length - 12) 
+          : history;
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(p['nama'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Tren Pemakaian 12 Bulan Terakhir', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: recentHistory.isEmpty 
+              ? const Center(child: Text('Belum ada riwayat pemakaian'))
+              : BarChart(
+                  BarChartData(
+                    gridData: const FlGridData(show: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            int idx = value.toInt();
+                            if (idx < 0 || idx >= recentHistory.length) return const SizedBox();
+                            final date = DateTime.parse(recentHistory[idx]['tanggal_catat']);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 5),
+                              child: Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 10)),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: recentHistory.asMap().entries.map((entry) {
+                      return BarChartGroupData(
+                        x: entry.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: (entry.value['pemakaian'] as num).toDouble(),
+                            color: AppTheme.primaryColor,
+                            width: 15,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context); // Close loading
+      _showSnackBar("Gagal memuat grafik: $e");
+    }
+  }
+
   void _confirmDelete(Map<String, dynamic> p) {
     showDialog(
       context: context,
@@ -149,86 +251,63 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
     );
   }
 
-  Widget _detailItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+  void _showAddEditDialog(BuildContext context, {Map<String, dynamic>? p}) {
+    final nameController = TextEditingController(text: p?['nama'] ?? '');
+    final addressController = TextEditingController(text: p?['alamat'] ?? '');
+    final phoneController = TextEditingController(text: p?['telepon'] ?? '');
+    final meterController = TextEditingController(text: p?['meter_terakhir']?.toString() ?? '0');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(p == null ? 'Tambah Pelanggan' : 'Edit Pelanggan'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Lengkap')),
+              TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Alamat')),
+              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'No. WhatsApp (628...)'), keyboardType: TextInputType.phone),
+              TextField(controller: meterController, decoration: const InputDecoration(labelText: 'Meteran Awal'), keyboardType: TextInputType.number),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              final data = {
+                'nama': nameController.text,
+                'alamat': addressController.text,
+                'telepon': phoneController.text,
+                'meter_terakhir': double.tryParse(meterController.text) ?? 0,
+              };
+
+              if (p == null) {
+                await _supabaseService.insertPelanggan(data);
+              } else {
+                await _supabaseService.updatePelanggan(p['id'], data);
+              }
+              Navigator.pop(context);
+              _refreshPelanggan();
+            },
+            child: const Text('Simpan'),
+          ),
         ],
       ),
     );
   }
 
-  void _showAddEditDialog(BuildContext context, {Map<String, dynamic>? p}) {
-    final nameController = TextEditingController(text: p?['nama']);
-    final addressController = TextEditingController(text: p?['alamat']);
-    final phoneController = TextEditingController(text: p?['telepon']);
-    final meterController = TextEditingController(text: p?['meter_awal']?.toString());
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 20, right: 20, top: 20
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(p == null ? 'Tambah Pelanggan' : 'Edit Pelanggan', 
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 15),
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Pelanggan')),
-            TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Alamat')),
-            TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Nomor WhatsApp (Contoh: 0812...)')),
-            if (p == null) 
-              TextField(controller: meterController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Meter Awal')),
-            const SizedBox(height: 25),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () async {
-                  try {
-                    if (nameController.text.isEmpty) {
-                      _showSnackBar("Nama harus diisi!");
-                      return;
-                    }
-                    
-                    if (p == null) {
-                      await _supabaseService.insertPelanggan(
-                        nameController.text,
-                        addressController.text,
-                        phoneController.text,
-                        double.tryParse(meterController.text) ?? 0,
-                      );
-                    } else {
-                      // MEMASTIKAN UPDATE MENGGUNAKAN ID YANG BENAR
-                      await _supabaseService.updatePelanggan(p['id'], {
-                        'nama': nameController.text,
-                        'alamat': addressController.text,
-                        'telepon': phoneController.text,
-                      });
-                    }
-                    
-                    Navigator.pop(context);
-                    _refreshPelanggan();
-                    _showSnackBar("Data berhasil disimpan!");
-                  } catch (e) {
-                    _showSnackBar("Error: $e");
-                  }
-                },
-                child: const Text('Simpan Perubahan'),
-              ),
-            ),
-            const SizedBox(height: 25),
-          ],
-        ),
+  Widget _detailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
       ),
     );
   }
