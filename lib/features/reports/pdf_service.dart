@@ -1,7 +1,7 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 class PdfService {
   Future<void> generateAndShareInvoice(Map<String, dynamic> data) async {
@@ -104,7 +104,7 @@ class PdfService {
   }
 
   static String formatCurrency(dynamic amount) {
-    final formatter = pw.NumberFormat.currency(
+    final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp. ',
       decimalDigits: 0,
@@ -133,7 +133,7 @@ class PdfService {
 
   pw.Widget _summaryRow(String label, String value) {
     return pw.Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
         pw.Text(value, style: const pw.TextStyle(fontSize: 10)),

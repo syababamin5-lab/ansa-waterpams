@@ -9,19 +9,10 @@ class CatatMeterScreen extends StatefulWidget {
   const CatatMeterScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _CatatMeterContent();
-  }
+  State<CatatMeterScreen> createState() => _CatatMeterScreenState();
 }
 
-class _CatatMeterContent extends StatefulWidget {
-  const _CatatMeterContent();
-
-  @override
-  State<_CatatMeterContent> createState() => _CatatMeterContentState();
-}
-
-class _CatatMeterContentState extends State<_CatatMeterContent> {
+class _CatatMeterScreenState extends State<CatatMeterScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final PdfService _pdfService = PdfService();
   
