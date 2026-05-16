@@ -186,34 +186,35 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         return;
       }
 
-      final total = formatRupiah(t['total_bayar']);
-      final pemakaian = t['pemakaian'];
-      final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
-      final tgl = DateFormat('dd/MM/yyyy').format(DateTime.parse(t['tanggal_catat']));
+      // LANGSUNG SHARE PDF (DI HP AKAN MUNCUL PILIHAN WHATSAPP)
+      final data = {
+        'nama': nama,
+        'alamat': latestPelanggan['alamat'],
+        'meter_lalu': t['meter_lalu'],
+        'meter_skrg': t['meter_skrg'],
+        'pemakaian': t['pemakaian'],
+        'harga': t['tarif_per_kubik'],
+        'beban': t['total_bayar'] - (t['pemakaian'] * t['tarif_per_kubik']),
+        'total': t['total_bayar'],
+        'tanggal': DateFormat('dd MMMM yyyy').format(DateTime.parse(t['tanggal_catat'])),
+        'pamsimas': _settings?['nama_pamsimas'] ?? 'ANSA WATER',
+      };
+      
+      // Membuka menu Berbagi File PDF
+      await _pdfService.shareInvoice(data);
 
-      String pesan = "Halo *$nama*,\n\n"
-          "Rincian tagihan air *$pamsimas* ($tgl):\n"
-          "💧 Pemakaian: $pemakaian m³\n"
-          "💰 Total: *$total*\n\n"
-          "Terima kasih.";
-
+      // Tetap buka chat WA untuk mengirim pesan teks sebagai pengantar
+      String pesan = "Halo *$nama*,\nBerikut struk tagihan air *$pamsimas* Anda. Terima kasih.";
+      
       String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-      if (cleanPhone.startsWith('0')) {
-        cleanPhone = '62${cleanPhone.substring(1)}';
-      } else if (cleanPhone.startsWith('8')) {
-        cleanPhone = '62$cleanPhone';
-      }
-      
+      if (cleanPhone.startsWith('0')) cleanPhone = '62${cleanPhone.substring(1)}';
+      else if (cleanPhone.startsWith('8')) cleanPhone = '62$cleanPhone';
+
       final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
-      final uri = Uri.parse(url);
-      
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
     } catch (e) {
-      _showSnack("Gagal membuka WA: $e");
+      _showSnack("Gagal memproses struk: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

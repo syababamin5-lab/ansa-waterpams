@@ -103,6 +103,78 @@ class PdfService {
     );
   }
 
+  Future<void> shareInvoice(Map<String, dynamic> data) async {
+    final pdf = pw.Document();
+    
+    // Kita buat ulang PDF-nya (Logika yang sama dengan generateAndShareInvoice)
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a5,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Center(child: pw.Text(data['pamsimas'] ?? 'ANSA WATER', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
+              pw.Center(child: pw.Text('Struk Tagihan Air Bulanan', style: pw.TextStyle(fontSize: 10))),
+              pw.SizedBox(height: 10),
+              pw.Divider(),
+              pw.SizedBox(height: 10),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Pelanggan: ${data['nama']}'),
+                      pw.Text('Alamat: ${data['alamat'] ?? '-'}'),
+                    ],
+                  ),
+                  pw.Text('Tgl: ${data['tanggal']}'),
+                ],
+              ),
+              pw.SizedBox(height: 20),
+              pw.Table(
+                border: pw.TableBorder.all(),
+                children: [
+                  _headerRow(['Rincian', 'Nilai']),
+                  _dataRow('Meter Lalu', '${data['meter_lalu']} m³'),
+                  _dataRow('Meter Sekarang', '${data['meter_skrg']} m³'),
+                  _dataRow('Total Pemakaian', '${data['pemakaian']} m³'),
+                  _dataRow('Harga per m³', formatCurrency(data['harga'])),
+                ],
+              ),
+              pw.SizedBox(height: 15),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                color: PdfColors.grey100,
+                child: pw.Column(
+                  children: [
+                    _summaryRow('Biaya Pemakaian', formatCurrency(data['pemakaian'] * data['harga'])),
+                    _summaryRow('Biaya Beban Tetap', formatCurrency(data['beban'])),
+                    pw.Divider(),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('TOTAL BAYAR', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.Text(formatCurrency(data['total']), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // SHARE PDF
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'Tagihan_${data['nama']}.pdf',
+    );
+  }
+
   static String formatCurrency(dynamic amount) {
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
