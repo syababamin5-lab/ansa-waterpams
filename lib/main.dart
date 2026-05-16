@@ -9,8 +9,8 @@ import 'features/dashboard/dashboard_screen.dart';
 import 'features/pelanggan/pelanggan_list_screen.dart';
 import 'features/transaksi/catat_meter_screen.dart';
 import 'features/tagihan/tagihan_screen.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 import 'features/riwayat/riwayat_screen.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
@@ -61,41 +61,64 @@ class _MainNavigationState extends State<MainNavigation> {
     const TagihanScreen(),
     const RiwayatScreen(),
   ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       body: _screens[_currentIndex].animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
               blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
+              color: Colors.black.withOpacity(0.08),
+            )
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: Colors.grey.withOpacity(0.5),
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedFontSize: 11,
-          unselectedFontSize: 10,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Beranda'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Pelanggan'),
-            BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat'),
-            BottomNavigationBarItem(icon: Icon(Icons.payment_rounded), label: 'Tagihan'),
-            BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Riwayat'),
-          ],
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+            child: GNav(
+              rippleColor: Colors.grey[300]!,
+              hoverColor: Colors.grey[100]!,
+              gap: 8,
+              activeColor: AppTheme.primaryColor,
+              iconSize: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              duration: const Duration(milliseconds: 400),
+              tabBackgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              color: Colors.grey,
+              tabs: const [
+                GButton(
+                  icon: Icons.dashboard_rounded,
+                  text: 'Beranda',
+                ),
+                GButton(
+                  icon: Icons.people_alt_rounded,
+                  text: 'Pelanggan',
+                ),
+                GButton(
+                  icon: Icons.speed_rounded,
+                  text: 'Catat',
+                ),
+                GButton(
+                  icon: Icons.payment_rounded,
+                  text: 'Tagihan',
+                ),
+                GButton(
+                  icon: Icons.history_rounded,
+                  text: 'Riwayat',
+                ),
+              ],
+              selectedIndex: _currentIndex,
+              onTabChange: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+            ),
+          ),
         ),
       ),
     );
