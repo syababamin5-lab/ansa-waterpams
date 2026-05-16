@@ -128,10 +128,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildChartHeader(),
                     const SizedBox(height: 15),
                     _buildChart(),
-                    const SizedBox(height: 30),
-                    _buildSectionTitle('Pengaturan Global'),
-                    const SizedBox(height: 15),
-                    _buildSettingsForm(),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -149,6 +145,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floating: true,
       pinned: true,
       backgroundColor: AppTheme.primaryColor,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings_rounded, color: Colors.white),
+          onPressed: _showSettingsModal,
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         title: Text(_namaPamsimasController.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         background: Container(
@@ -161,6 +163,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showSettingsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  height: 4,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Pengaturan Global', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: _buildSettingsForm(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -385,42 +437,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSettingsForm() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _inputSettings('Nama Pamsimas', _namaPamsimasController, Icons.business_rounded),
-          const SizedBox(height: 16),
-          _inputSettings('Harga per m³', _hargaController, Icons.payments_rounded, isNumber: true),
-          const SizedBox(height: 16),
-          _inputSettings('Biaya Beban Tetap', _bebanController, Icons.receipt_long_rounded, isNumber: true),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: _updateSettings,
-              child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+    return Column(
+      children: [
+        _inputSettings('Nama Pamsimas', _namaPamsimasController, Icons.business_rounded),
+        const SizedBox(height: 16),
+        _inputSettings('Harga per m³', _hargaController, Icons.payments_rounded, isNumber: true),
+        const SizedBox(height: 16),
+        _inputSettings('Biaya Beban Tetap', _bebanController, Icons.receipt_long_rounded, isNumber: true),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
+            onPressed: () {
+              Navigator.pop(context); // Tutup modal saat klik simpan
+              _updateSettings();
+            },
+            child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
