@@ -19,8 +19,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   bool _isLoading = true;
   int _totalWarga = 0;
-  double _totalTagihan = 0;
-  double _sudahBayar = 0;
+  double _totalPendapatan = 0;
+  int _countSudahBayar = 0;
   double _belumBayar = 0;
 
   @override
@@ -35,15 +35,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final pelanggan = await _supabaseService.getPelanggan();
       final transaksi = await _supabaseService.getAllTransaksi();
 
-      double total = 0;
-      double lunas = 0;
+      double pendapatan = 0;
       double hutang = 0;
+      int lunasCount = 0;
 
       for (var t in transaksi) {
         double bayar = (t['total_bayar'] ?? 0).toDouble();
-        total += bayar;
         if (t['status'] == 'LUNAS') {
-          lunas += bayar;
+          pendapatan += bayar;
+          lunasCount++;
         } else {
           hutang += bayar;
         }
@@ -55,8 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _namaPamsimasController.text = settings['nama_pamsimas'] ?? '';
         
         _totalWarga = pelanggan.length;
-        _totalTagihan = total;
-        _sudahBayar = lunas;
+        _totalPendapatan = pendapatan;
+        _countSudahBayar = lunasCount;
         _belumBayar = hutang;
         
         _isLoading = false;
@@ -134,8 +134,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisSpacing: 15,
       children: [
         _buildStatCard('Total Warga', _totalWarga.toString(), Icons.group, Colors.blue),
-        _buildStatCard('Total Tagihan', formatRupiah(_totalTagihan), Icons.receipt_long, Colors.purple),
-        _buildStatCard('Sudah Bayar', formatRupiah(_sudahBayar), Icons.check_circle, Colors.green),
+        _buildStatCard('Total Pendapatan', formatRupiah(_totalPendapatan), Icons.monetization_on, Colors.purple),
+        _buildStatCard('Sudah Bayar', '$_countSudahBayar Transaksi', Icons.check_circle, Colors.green),
         _buildStatCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning, Colors.orange),
       ],
     );
