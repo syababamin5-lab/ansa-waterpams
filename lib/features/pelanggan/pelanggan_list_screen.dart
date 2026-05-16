@@ -56,7 +56,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                       itemBuilder: (context, index) {
                         final p = _pelanggan[index];
                         return Card(
-                          margin: const EdgeInsets.bottom(10),
+                          margin: const EdgeInsets.only(bottom: 10),
                           child: ListTile(
                             onTap: () => _showPelangganDetail(p),
                             leading: CircleAvatar(
