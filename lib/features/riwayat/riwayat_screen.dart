@@ -204,6 +204,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       await _pdfService.shareInvoice(data);
 
       // Tetap buka chat WA untuk mengirim pesan teks sebagai pengantar
+      final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
       String pesan = "Halo *$nama*,\nBerikut struk tagihan air *$pamsimas* Anda. Terima kasih.";
       
       String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
