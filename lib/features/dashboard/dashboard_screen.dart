@@ -141,26 +141,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
-      floating: true,
+      expandedHeight: 140,
+      floating: false,
       pinned: true,
+      elevation: 0,
       backgroundColor: AppTheme.primaryColor,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.settings_rounded, color: Colors.white),
-          onPressed: _showSettingsModal,
+        Container(
+          margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.settings_rounded, color: Colors.white, size: 22),
+            onPressed: _showSettingsModal,
+          ),
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(_namaPamsimasController.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+        title: Text(
+          _namaPamsimasController.text.isEmpty ? 'Dashboard' : _namaPamsimasController.text, 
+          style: const TextStyle(
+            fontWeight: FontWeight.w800, 
+            fontSize: 20,
+            color: Colors.white,
+            letterSpacing: -0.5,
           ),
+        ),
+        background: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor, 
+                    const Color(0xFF2962FF), // Warna biru aksen yang lebih gelap/vibrant
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            Positioned(
+              right: -50,
+              top: -50,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 60,
+              bottom: -40,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
