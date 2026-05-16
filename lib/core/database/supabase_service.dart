@@ -89,4 +89,11 @@ class SupabaseService {
   Future<void> updateSettings(Map<String, dynamic> data) async {
     await client.from('pengaturan').update(data).eq('id', 1);
   }
+
+  // --- Reset Database ---
+  Future<void> deleteAllData() async {
+    // Menghapus transaksi terlebih dahulu karena ada relasi Foreign Key ke pelanggan
+    await client.from('transaksi').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await client.from('pelanggan').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  }
 }

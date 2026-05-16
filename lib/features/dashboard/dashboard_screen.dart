@@ -461,7 +461,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: BorderSide(color: Colors.red.withOpacity(0.5)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: _showResetDataDialog,
+            icon: const Icon(Icons.delete_forever_rounded),
+            label: const Text('Kosongkan Semua Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ),
+        ),
       ],
+    );
+  }
+
+  void _showResetDataDialog() {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              SizedBox(width: 10),
+              Text('Hapus Semua Data?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tindakan ini akan menghapus SELURUH data pelanggan dan transaksi secara permanen. Anda tidak dapat mengembalikannya.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Masukkan Kode Keamanan',
+                  prefixIcon: const Icon(Icons.lock_rounded, color: Colors.red),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (pinController.text == '229308') {
+                  Navigator.pop(context); // Tutup pop-up
+                  Navigator.pop(context); // Tutup pengaturan
+                  setState(() => _isLoading = true);
+                  try {
+                    await _supabaseService.deleteAllData();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Berhasil: Semua data telah dikosongkan!')));
+                    _loadAllData();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus data: $e')));
+                    setState(() => _isLoading = false);
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kode salah! Data aman.')));
+                }
+              },
+              child: const Text('Hapus Permanen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 
