@@ -171,6 +171,8 @@ class _TagihanScreenState extends State<TagihanScreen> {
   }
 
   void _showPaymentDialog(Map<String, dynamic> t) {
+    final tglCatat = DateFormat('dd MMM yyyy').format(DateTime.parse(t['tanggal_catat']));
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -180,11 +182,15 @@ class _TagihanScreenState extends State<TagihanScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
+            _buildDetailRow('Periode', tglCatat),
+            const Divider(),
             _buildDetailRow('Meter Lalu', '${t['meter_lalu']} m³'),
             _buildDetailRow('Meter Baru', '${t['meter_skrg']} m³'),
             _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
+            _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
+            _buildDetailRow('Biaya Beban', formatRupiah(t['beban_saat_ini'] ?? 0)),
             const Divider(),
-            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true),
+            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.blue),
           ],
         ),
         actions: [
@@ -205,6 +211,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
   }
 
   void _showDetailDialog(Map<String, dynamic> t) {
+    final tglCatat = DateFormat('dd MMM yyyy').format(DateTime.parse(t['tanggal_catat']));
     final tglBayar = t['tanggal_bayar'] != null 
         ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(t['tanggal_bayar']))
         : '-';
@@ -218,12 +225,14 @@ class _TagihanScreenState extends State<TagihanScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
+            _buildDetailRow('Periode', tglCatat),
             _buildDetailRow('Status', 'LUNAS', color: Colors.green),
             _buildDetailRow('Metode', t['metode_bayar'] ?? '-'),
             _buildDetailRow('Tgl Bayar', tglBayar),
             const Divider(),
             _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
-            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true),
+            _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
+            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.green),
           ],
         ),
         actions: [
