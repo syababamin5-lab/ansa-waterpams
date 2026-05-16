@@ -260,13 +260,17 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
     return Column(
       children: [
         Expanded(
-          child: BarChart(
-            BarChartData(
-              gridData: const FlGridData(show: false),
+          child: LineChart(
+            LineChartData(
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.1), strokeWidth: 1),
+              ),
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
-                    showTitles: true, 
+                    showTitles: true,
                     reservedSize: 30,
                     getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(fontSize: 10, color: Colors.grey)),
                   )
@@ -279,7 +283,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                       if (idx < 0 || idx >= data.length) return const SizedBox();
                       final date = DateTime.parse(data[idx]['tanggal_catat']);
                       return Padding(
-                        padding: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.only(top: 10),
                         child: Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                       );
                     },
@@ -289,41 +293,41 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                 topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: false),
-              barGroups: data.asMap().entries.map((entry) {
-                return BarChartGroupData(
-                  x: entry.key,
-                  barRods: [
-                    BarChartRodData(
-                      toY: (entry.value['pemakaian'] as num).toDouble(),
-                      gradient: LinearGradient(
-                        colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.6)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      width: 18,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                      backDrawRodData: BackgroundBarChartRodData(
-                        show: true,
-                        toY: 30, // Max height placeholder
-                        color: Colors.grey.withOpacity(0.05),
-                      ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: data.asMap().entries.map((entry) {
+                    return FlSpot(entry.key.toDouble(), (entry.value['pemakaian'] as num).toDouble());
+                  }).toList(),
+                  isCurved: true,
+                  gradient: LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.7)]),
+                  barWidth: 4,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: true),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      colors: [AppTheme.primaryColor.withOpacity(0.3), AppTheme.primaryColor.withOpacity(0.0)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
-                  ],
-                );
-              }).toList(),
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
+                  ),
+                ),
+              ],
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
                   tooltipBgColor: Colors.black87,
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    return BarTooltipItem(
-                      '${rod.toY} m³',
-                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    );
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      return LineTooltipItem(
+                        '${spot.y} m³',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      );
+                    }).toList();
                   },
                 ),
               ),
             ),
-          ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.9, 0.9)),
+          ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0),
         ),
         const SizedBox(height: 10),
         const Text('* Satuan dalam Meter Kubik (m³)', style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Colors.grey)),
