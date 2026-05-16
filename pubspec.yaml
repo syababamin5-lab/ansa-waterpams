@@ -23,7 +23,7 @@ dependencies:
   flutter_animate: ^4.2.0
   device_preview: ^1.1.0
   google_nav_bar: ^5.0.6
-  animated_notch_bottom_bar: ^1.1.2
+  animated_notch_bottom_bar: ^1.0.4
 
 dev_dependencies:
   flutter_test:

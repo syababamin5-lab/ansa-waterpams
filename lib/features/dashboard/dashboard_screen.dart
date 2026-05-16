@@ -224,30 +224,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
-      crossAxisSpacing: 15,
-      mainAxisSpacing: 15,
-      childAspectRatio: 1.5,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.1,
       children: [
-        _statCard('Total Warga', _totalWarga.toString(), Icons.people, Colors.blue),
-        _statCard('Total Pendapatan', formatRupiah(_totalPendapatan), Icons.payments, Colors.green),
-        _statCard('Lunas (Tagihan)', _countSudahBayar.toString(), Icons.check_circle, Colors.teal),
-        _statCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning, Colors.orange),
+        _statCard('Total Warga', '$_totalWarga Orang', Icons.people_alt_rounded, const Color(0xFF4A90E2)),
+        _statCard('Pendapatan', formatRupiah(_totalPendapatan), Icons.account_balance_wallet_rounded, const Color(0xFF00C853)),
+        _statCard('Lunas', '$_countSudahBayar Tagihan', Icons.verified_rounded, const Color(0xFF00BFA5)),
+        _statCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning_rounded, const Color(0xFFFF9100)),
       ],
     );
   }
 
   Widget _statCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: AppTheme.cardDecoration,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-          FittedBox(child: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.withOpacity(0.3)),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title, 
+                style: TextStyle(
+                  fontSize: 12, 
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value, 
+                  style: const TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -337,26 +386,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSettingsForm() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.cardDecoration,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          _inputSettings('Nama Pamsimas', _namaPamsimasController, Icons.business),
-          const SizedBox(height: 15),
-          _inputSettings('Harga per m³', _hargaController, Icons.money, isNumber: true),
-          const SizedBox(height: 15),
-          _inputSettings('Biaya Beban Tetap', _bebanController, Icons.receipt, isNumber: true),
-          const SizedBox(height: 25),
+          _inputSettings('Nama Pamsimas', _namaPamsimasController, Icons.business_rounded),
+          const SizedBox(height: 16),
+          _inputSettings('Harga per m³', _hargaController, Icons.payments_rounded, isNumber: true),
+          const SizedBox(height: 16),
+          _inputSettings('Biaya Beban Tetap', _bebanController, Icons.receipt_long_rounded, isNumber: true),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 54,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: _updateSettings,
-              child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ),
         ],
@@ -365,13 +425,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _inputSettings(String label, TextEditingController controller, IconData icon, {bool isNumber = false}) {
-    return TextField(
-      controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.08)),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+          prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
       ),
     );
   }
