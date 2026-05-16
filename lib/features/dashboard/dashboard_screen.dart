@@ -64,7 +64,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
 
         // Logika grouping grafik
-        final date = DateTime.parse(t['tanggal_catat']);
         final key = DateFormat('yyyy-MM').format(date);
         
         if (!grouped.containsKey(key)) {

@@ -9,7 +9,7 @@ import 'features/dashboard/dashboard_screen.dart';
 import 'features/pelanggan/pelanggan_list_screen.dart';
 import 'features/transaksi/catat_meter_screen.dart';
 import 'features/tagihan/tagihan_screen.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 import 'features/riwayat/riwayat_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +52,8 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
+  final _pageController = PageController(initialPage: 0);
+  final NotchBottomBarController _notchController = NotchBottomBarController(index: 0);
 
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -61,66 +62,72 @@ class _MainNavigationState extends State<MainNavigation> {
     const TagihanScreen(),
     const RiwayatScreen(),
   ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _notchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: _screens[_currentIndex].animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 20,
-              color: Colors.black.withOpacity(0.08),
-            )
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-            child: GNav(
-              rippleColor: Colors.grey[300]!,
-              hoverColor: Colors.grey[100]!,
-              gap: 8,
-              activeColor: AppTheme.primaryColor,
-              iconSize: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              color: Colors.grey,
-              tabs: const [
-                GButton(
-                  icon: Icons.dashboard_rounded,
-                  text: 'Beranda',
-                ),
-                GButton(
-                  icon: Icons.people_alt_rounded,
-                  text: 'Pelanggan',
-                ),
-                GButton(
-                  icon: Icons.speed_rounded,
-                  text: 'Catat',
-                ),
-                GButton(
-                  icon: Icons.payment_rounded,
-                  text: 'Tagihan',
-                ),
-                GButton(
-                  icon: Icons.history_rounded,
-                  text: 'Riwayat',
-                ),
-              ],
-              selectedIndex: _currentIndex,
-              onTabChange: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-            ),
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _screens,
+      ),
+      extendBody: true,
+      bottomNavigationBar: AnimatedNotchBottomBar(
+        notchBottomBarController: _notchController,
+        color: Colors.white,
+        showLabel: true,
+        textOverflow: TextOverflow.visible,
+        maxLine: 1,
+        shadowElevation: 5,
+        kBottomRadius: 28.0,
+        notchColor: AppTheme.primaryColor,
+        removeMargins: false,
+        bottomBarWidth: 500,
+        showShadow: true,
+        durationInMilliSeconds: 300,
+        itemLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+        elevation: 1,
+        bottomBarItems: const [
+          BottomBarItem(
+            inActiveItem: Icon(Icons.dashboard_outlined, color: Colors.blueGrey),
+            activeItem: Icon(Icons.dashboard_rounded, color: Colors.white),
+            itemLabel: 'Beranda',
           ),
-        ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.people_alt_outlined, color: Colors.blueGrey),
+            activeItem: Icon(Icons.people_alt_rounded, color: Colors.white),
+            itemLabel: 'Pelanggan',
+          ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.speed_outlined, color: Colors.blueGrey),
+            activeItem: Icon(Icons.speed_rounded, color: Colors.white),
+            itemLabel: 'Catat',
+          ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.payment_outlined, color: Colors.blueGrey),
+            activeItem: Icon(Icons.payment_rounded, color: Colors.white),
+            itemLabel: 'Tagihan',
+          ),
+          BottomBarItem(
+            inActiveItem: Icon(Icons.history_outlined, color: Colors.blueGrey),
+            activeItem: Icon(Icons.history_rounded, color: Colors.white),
+            itemLabel: 'Riwayat',
+          ),
+        ],
+        onTap: (index) {
+          _pageController.jumpToPage(index);
+        },
+        kIconSize: 24.0,
       ),
     );
   }
 }
+
