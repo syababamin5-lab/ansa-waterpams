@@ -167,14 +167,24 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _kirimWhatsApp(Map<String, dynamic> t) async {
-    final pelanggan = t['pelanggan'];
-    final nama = pelanggan['nama'];
-    final phone = pelanggan['telepon']?.toString() ?? '';
+    setState(() => _isLoading = true); // Tampilkan loading sebentar
     
-    if (phone.isEmpty || phone == '-') {
-      _showSnack("Nomor WA warga ini belum diisi! Silakan edit di menu Pelanggan.");
-      return;
-    }
+    try {
+      // AMBIL DATA TERBARU DARI DATABASE BERDASARKAN ID
+      final latestPelanggan = await _supabaseService.client
+          .from('pelanggan')
+          .select()
+          .eq('id', t['id_pelanggan'])
+          .single();
+
+      final nama = latestPelanggan['nama'];
+      final phone = latestPelanggan['telepon']?.toString() ?? '';
+      
+      if (phone.isEmpty || phone == '-') {
+        _showSnack("Nomor WA warga ini belum diisi! Silakan edit di menu Pelanggan.");
+        setState(() => _isLoading = false);
+        return;
+      }
 
     final total = formatRupiah(t['total_bayar']);
     final pemakaian = t['pemakaian'];
@@ -208,6 +218,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       }
     } catch (e) {
       _showSnack("Gagal membuka WA: Pastikan nomor benar.");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
