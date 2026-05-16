@@ -9,29 +9,50 @@ class CatatMeterScreen extends StatefulWidget {
   const CatatMeterScreen({super.key});
 
   @override
-  State<CatatMeterScreen> createState() => _CatatMeterScreenState();
+  Widget build(BuildContext context) {
+    return const _CatatMeterContent();
+  }
 }
 
-class _CatatMeterScreenState extends State<CatatMeterScreen> {
+class _CatatMeterContent extends StatefulWidget {
+  const _CatatMeterContent();
+
+  @override
+  State<_CatatMeterContent> createState() => _CatatMeterContentState();
+}
+
+class _CatatMeterContentState extends State<_CatatMeterContent> {
   final SupabaseService _supabaseService = SupabaseService();
   final PdfService _pdfService = PdfService();
   
   List<Map<String, dynamic>> _pelanggan = [];
   Map<String, dynamic>? _selectedPelanggan;
+  Map<String, dynamic>? _settings;
   final TextEditingController _meterBaruController = TextEditingController();
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPelanggan();
+    _loadInitialData();
   }
 
-  void _loadPelanggan() async {
+  String formatRupiah(dynamic amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp. ',
+      decimalDigits: 0,
+    );
+    return "${formatter.format(amount)},-";
+  }
+
+  void _loadInitialData() async {
     try {
-      final data = await _supabaseService.getPelanggan();
+      final pelData = await _supabaseService.getPelanggan();
+      final setData = await _supabaseService.getSettings();
       setState(() {
-        _pelanggan = data;
+        _pelanggan = pelData;
+        _settings = setData;
       });
     } catch (e) {
       debugPrint("Error: $e");
@@ -52,24 +73,18 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
             const SizedBox(height: 10),
             _buildDropdown(),
             
-            if (_selectedPelanggan != null) ...[
+            if (_selectedPelanggan != null && _settings != null) ...[
               const SizedBox(height: 30),
               _buildDetailCard().animate().fadeIn().slideY(begin: 0.1, end: 0),
               const SizedBox(height: 30),
               _buildInputSection().animate().fadeIn(delay: 200.ms),
+              const SizedBox(height: 20),
+              _buildCalculationSummary().animate().fadeIn(delay: 400.ms),
               const SizedBox(height: 40),
               _buildSubmitButton(),
-            ] else ...[
-              const SizedBox(height: 100),
-              Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.person_search_rounded, size: 80, color: Colors.grey.shade300),
-                    const SizedBox(height: 10),
-                    const Text('Pilih warga untuk mulai mencatat', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              ),
+            ] else if (_pelanggan.isEmpty && _isSaving == false) ...[
+               const SizedBox(height: 100),
+               const Center(child: CircularProgressIndicator()),
             ],
           ],
         ),
@@ -114,8 +129,6 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
         children: [
           _infoRow('Nama Warga', _selectedPelanggan!['nama']),
           const Divider(height: 25),
-          _infoRow('Alamat', _selectedPelanggan!['alamat'] ?? '-'),
-          const Divider(height: 25),
           _infoRow('Meter Terakhir', '${_selectedPelanggan!['meter_terakhir']} m³', isHighlight: true),
         ],
       ),
@@ -135,7 +148,6 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.speed, color: AppTheme.primaryColor),
             suffixText: 'm³',
-            hintText: '0.0',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
             filled: true,
             fillColor: Colors.white,
@@ -143,6 +155,29 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
           onChanged: (val) => setState(() {}),
         ),
       ],
+    );
+  }
+
+  Widget _buildCalculationSummary() {
+    final meterBaru = double.tryParse(_meterBaruController.text) ?? 0;
+    final meterLalu = (_selectedPelanggan!['meter_terakhir'] as num).toDouble();
+    final pakai = meterBaru > meterLalu ? meterBaru - meterLalu : 0.0;
+    final harga = (_settings!['harga_per_kubik'] as num).toDouble();
+    final beban = (_settings!['biaya_beban'] as num).toDouble();
+    final total = (pakai * harga) + beban;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.cardDecoration.copyWith(color: Colors.blue.shade50),
+      child: Column(
+        children: [
+          _infoRow('Pemakaian ($pakai m³ x ${formatRupiah(harga)})', formatRupiah(pakai * harga)),
+          const SizedBox(height: 10),
+          _infoRow('Biaya Beban Tetap', formatRupiah(beban)),
+          const Divider(height: 25, thickness: 2),
+          _infoRow('TOTAL TAGIHAN', formatRupiah(total), isHighlight: true),
+        ],
+      ),
     );
   }
 
@@ -154,7 +189,6 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          elevation: 5,
         ),
         onPressed: _isSaving ? null : _prosesSimpan,
         child: _isSaving 
@@ -168,7 +202,7 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: AppTheme.textSecondary)),
+        Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
         Text(value, style: TextStyle(
           fontWeight: FontWeight.bold, 
           fontSize: isHighlight ? 18 : 14,
@@ -180,7 +214,9 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
 
   void _prosesSimpan() async {
     final meterBaru = double.tryParse(_meterBaruController.text);
-    if (meterBaru == null || meterBaru <= _selectedPelanggan!['meter_terakhir']) {
+    final meterLalu = (_selectedPelanggan!['meter_terakhir'] as num).toDouble();
+    
+    if (meterBaru == null || meterBaru <= meterLalu) {
       _showSnack('Angka meter baru harus lebih besar dari sebelumnya!');
       return;
     }
@@ -188,33 +224,37 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
     setState(() => _isSaving = true);
     
     try {
-      double pemakaian = meterBaru - _selectedPelanggan!['meter_terakhir'];
-      double tarif = 3000;
-      double total = pemakaian * tarif;
+      double pakai = meterBaru - meterLalu;
+      double harga = (_settings!['harga_per_kubik'] as num).toDouble();
+      double beban = (_settings!['biaya_beban'] as num).toDouble();
+      double total = (pakai * harga) + beban;
 
       await _supabaseService.insertTransaksi({
         'id_pelanggan': _selectedPelanggan!['id'],
-        'meter_lalu': _selectedPelanggan!['meter_terakhir'],
+        'meter_lalu': meterLalu,
         'meter_skrg': meterBaru,
-        'pemakaian': pemakaian,
-        'tarif_per_kubik': tarif,
+        'pemakaian': pakai,
+        'tarif_per_kubik': harga,
         'total_bayar': total,
       });
 
       final transaksiData = {
         'nama': _selectedPelanggan!['nama'],
         'alamat': _selectedPelanggan!['alamat'],
-        'meter_lalu': _selectedPelanggan!['meter_terakhir'],
+        'meter_lalu': meterLalu,
         'meter_skrg': meterBaru,
-        'pemakaian': pemakaian,
+        'pemakaian': pakai,
+        'harga': harga,
+        'beban': beban,
         'total': total,
-        'tanggal': DateFormat('dd MMMM yyyy').format(DateTime.now()),
+        'tanggal': DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now()),
+        'pamsimas': _settings!['nama_pamsimas'],
       };
 
       await _pdfService.generateAndShareInvoice(transaksiData);
       
-      _showSnack('Berhasil! PDF Tagihan sedang dibuka...');
-      _loadPelanggan();
+      _showSnack('Berhasil! Menampilkan jendela PDF...');
+      _loadInitialData();
       setState(() {
         _selectedPelanggan = null;
         _meterBaruController.clear();

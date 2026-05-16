@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/secrets.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/pelanggan/pelanggan_list_screen.dart';
 import 'features/transaksi/catat_meter_screen.dart';
+import 'features/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inisialisasi format tanggal/uang bahasa Indonesia
+  await initializeDateFormatting('id_ID', null);
   
   await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
@@ -32,7 +37,7 @@ class AnsaWaterApp extends StatelessWidget {
     return MaterialApp(
       title: 'Ansa Water',
       debugShowCheckedModeBanner: false,
-      locale: DevicePreview.locale(context),
+      locale: const Locale('id', 'ID'), // Set default ke Indonesia
       builder: DevicePreview.appBuilder,
       theme: AppTheme.lightTheme,
       home: const MainNavigation(),
@@ -54,7 +59,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const DashboardScreen(),
     const PelangganListScreen(),
     const CatatMeterScreen(),
-    const Center(child: Text('Riwayat & Laporan')),
+    const SettingsScreen(),
   ];
 
   @override
@@ -86,7 +91,7 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Beranda'),
             BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Pelanggan'),
             BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat Meter'),
-            BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Riwayat'),
+            BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Biaya'),
           ],
         ),
       ),

@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class PdfService {
   Future<void> generateAndShareInvoice(Map<String, dynamic> data) async {
@@ -17,47 +15,80 @@ class PdfService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Center(
-                child: pw.Text('ANSA WATER', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
+                child: pw.Text(data['pamsimas'] ?? 'ANSA WATER', 
+                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
               ),
               pw.Center(
-                child: pw.Text('Struk Tagihan Air Terpadu', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                child: pw.Text('Struk Tagihan Air Bulanan', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
               ),
-              pw.Divider(thickness: 2, color: PdfColors.blue),
-              pw.SizedBox(height: 20),
-              pw.Text('Detail Pelanggan:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.Text('Nama: ${data['nama']}'),
-              pw.Text('Alamat: ${data['alamat']}'),
-              pw.Text('Tanggal: ${data['tanggal']}'),
-              pw.SizedBox(height: 20),
-              pw.Table(
-                border: pw.TableBorder.all(color: PdfColors.grey300),
+              pw.SizedBox(height: 10),
+              pw.Divider(thickness: 1, color: PdfColors.blueGrey),
+              pw.SizedBox(height: 10),
+              
+              // Info Pelanggan
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.blue100),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Deskripsi', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Nilai', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Text('Pelanggan:', style: pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                      pw.Text(data['nama'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text(data['alamat'] ?? '-', style: pw.TextStyle(fontSize: 9)),
                     ],
                   ),
-                  _buildTableRow('Meter Lalu', '${data['meter_lalu']} m³'),
-                  _buildTableRow('Meter Sekarang', '${data['meter_skrg']} m³'),
-                  _buildTableRow('Total Pemakaian', '${data['pemakaian']} m³'),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Tanggal:', style: pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                      pw.Text(data['tanggal'], style: pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
                 ],
               ),
+              
               pw.SizedBox(height: 20),
+              
+              // Tabel Perhitungan
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                children: [
+                  _headerRow(['Rincian', 'Nilai']),
+                  _dataRow('Meter Lalu', '${data['meter_lalu']} m³'),
+                  _dataRow('Meter Sekarang', '${data['meter_skrg']} m³'),
+                  _dataRow('Total Pemakaian', '${data['pemakaian']} m³'),
+                  _dataRow('Harga per m³', formatCurrency(data['harga'])),
+                ],
+              ),
+              
+              pw.SizedBox(height: 15),
+              
+              // Total Section
               pw.Container(
-                alignment: pw.Alignment.centerRight,
+                padding: const pw.EdgeInsets.all(10),
+                decoration: const pw.BoxDecoration(color: PdfColors.grey100),
                 child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('TOTAL TAGIHAN:', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
-                    pw.Text('Rp ${data['total'].toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                    _summaryRow('Biaya Pemakaian', formatCurrency(data['pemakaian'] * data['harga'])),
+                    pw.SizedBox(height: 5),
+                    _summaryRow('Biaya Beban Tetap', formatCurrency(data['beban'])),
+                    pw.Divider(thickness: 0.5),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('TOTAL BAYAR', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                        pw.Text(formatCurrency(data['total']), 
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue900)),
+                      ],
+                    ),
                   ],
                 ),
               ),
+              
               pw.Spacer(),
               pw.Center(
-                child: pw.Text('Terima kasih atas pembayaran Anda', style: pw.TextStyle(fontStyle: pw.FontStyle.italic, color: PdfColors.grey)),
+                child: pw.Text('Simpan struk ini sebagai bukti pembayaran sah.', 
+                  style: pw.TextStyle(fontSize: 8, color: PdfColors.grey, fontStyle: pw.FontStyle.italic)),
               ),
             ],
           );
@@ -65,20 +96,47 @@ class PdfService {
       ),
     );
 
-    // Save PDF to temporary directory
-    final output = await getTemporaryDirectory();
-    final file = File("${output.path}/tagihan_${data['nama'].toString().replaceAll(' ', '_')}.pdf");
-    await file.writeAsBytes(await pdf.save());
-
-    // Share to WhatsApp or other apps
-    await Share.shareXFiles([XFile(file.path)], text: 'Halo ${data['nama']}, berikut adalah tagihan air Anda untuk periode ini.');
+    // Menggunakan Printing agar kompatibel dengan Web/Chrome & Mobile
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Tagihan_${data['nama']}',
+    );
   }
 
-  pw.TableRow _buildTableRow(String label, String value) {
+  static String formatCurrency(dynamic amount) {
+    final formatter = pw.NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp. ',
+      decimalDigits: 0,
+    );
+    return "${formatter.format(amount)},-";
+  }
+
+  pw.TableRow _headerRow(List<String> labels) {
+    return pw.TableRow(
+      decoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
+      children: labels.map((l) => pw.Padding(
+        padding: const pw.EdgeInsets.all(5),
+        child: pw.Text(l, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+      )).toList(),
+    );
+  }
+
+  pw.TableRow _dataRow(String label, String value) {
     return pw.TableRow(
       children: [
-        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(label)),
-        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(value)),
+        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(label, style: const pw.TextStyle(fontSize: 10))),
+        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(value, style: const pw.TextStyle(fontSize: 10))),
+      ],
+    );
+  }
+
+  pw.Widget _summaryRow(String label, String value) {
+    return pw.Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
+        pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
       ],
     );
   }

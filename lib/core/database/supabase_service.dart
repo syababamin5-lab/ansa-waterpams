@@ -41,4 +41,14 @@ class SupabaseService {
         .order('tanggal_catat', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   }
+
+  // --- CRUD Pengaturan ---
+  Future<Map<String, dynamic>> getSettings() async {
+    final response = await client.from('pengaturan').select().single();
+    return Map<String, dynamic>.from(response);
+  }
+
+  Future<void> updateSettings(Map<String, dynamic> data) async {
+    await client.from('pengaturan').update(data).eq('id', 1);
+  }
 }
