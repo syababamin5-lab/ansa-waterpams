@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/database/supabase_service.dart';
 
@@ -15,21 +16,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _hargaController = TextEditingController();
   final _bebanController = TextEditingController();
   final _namaPamsimasController = TextEditingController();
+  
   bool _isLoading = true;
+  int _totalWarga = 0;
+  double _totalTagihan = 0;
+  double _sudahBayar = 0;
+  double _belumBayar = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadAllData();
   }
 
-  void _loadData() async {
+  Future<void> _loadAllData() async {
     try {
       final settings = await _supabaseService.getSettings();
+      final pelanggan = await _supabaseService.getPelanggan();
+      final transaksi = await _supabaseService.getAllTransaksi();
+
+      double total = 0;
+      double lunas = 0;
+      double hutang = 0;
+
+      for (var t in transaksi) {
+        double bayar = (t['total_bayar'] ?? 0).toDouble();
+        total += bayar;
+        if (t['status'] == 'LUNAS') {
+          lunas += bayar;
+        } else {
+          hutang += bayar;
+        }
+      }
+
       setState(() {
         _hargaController.text = settings['harga_per_kubik'].toString();
         _bebanController.text = settings['biaya_beban'].toString();
         _namaPamsimasController.text = settings['nama_pamsimas'] ?? '';
+        
+        _totalWarga = pelanggan.length;
+        _totalTagihan = total;
+        _sudahBayar = lunas;
+        _belumBayar = hutang;
+        
         _isLoading = false;
       });
     } catch (e) {
@@ -38,63 +67,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  String formatRupiah(dynamic amount) {
+    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
+    return formatter.format(amount);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          _buildAppBar(),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionTitle('Statistik Ringkas'),
-                  const SizedBox(height: 15),
-                  Row(
-                    children: [
-                      Expanded(child: _buildStatCard('Total Warga', '128', Icons.group, Colors.blue)),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildStatCard('Tagihan', 'Rp 4.2M', Icons.receipt_long, Colors.green)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildSectionTitle('Grafik Pemakaian (m³)'),
-                  const SizedBox(height: 15),
-                  _buildChart(),
-                  const SizedBox(height: 30),
-                  _buildSectionTitle('Pengaturan Global'),
-                  const SizedBox(height: 15),
-                  _buildSettingsForm(),
-                  const SizedBox(height: 100),
-                ],
+      body: RefreshIndicator(
+        onRefresh: _loadAllData,
+        child: CustomScrollView(
+          slivers: [
+            _buildAppBar(),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Statistik Real-time'),
+                    const SizedBox(height: 15),
+                    _buildStatsGrid(),
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Grafik Pemakaian (m³)'),
+                    const SizedBox(height: 15),
+                    _buildChart(),
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Pengaturan Global'),
+                    const SizedBox(height: 15),
+                    _buildSettingsForm(),
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 180,
+      expandedHeight: 150,
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
-        title: const Text('Ansa Water', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(_namaPamsimasController.text.isEmpty ? 'ANSA WATER' : _namaPamsimasController.text, 
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         background: Container(
           decoration: AppTheme.gradientDecoration,
-          child: const Center(child: Icon(Icons.water_drop, color: Colors.white, size: 50)),
+          child: const Center(child: Icon(Icons.water_drop, color: Colors.white, size: 40)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 1.3,
+      mainAxisSpacing: 15,
+      crossAxisSpacing: 15,
+      children: [
+        _buildStatCard('Total Warga', _totalWarga.toString(), Icons.group, Colors.blue),
+        _buildStatCard('Total Tagihan', formatRupiah(_totalTagihan), Icons.receipt_long, Colors.purple),
+        _buildStatCard('Sudah Bayar', formatRupiah(_sudahBayar), Icons.check_circle, Colors.green),
+        _buildStatCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning, Colors.orange),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: AppTheme.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+        ],
       ),
     );
   }
 
   Widget _buildChart() {
     return Container(
-      height: 250,
+      height: 200,
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.cardDecoration,
       child: BarChart(
@@ -144,6 +213,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'biaya_beban': double.parse(_bebanController.text),
         'nama_pamsimas': _namaPamsimasController.text,
       });
+      _loadAllData();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pengaturan disimpan!")));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
@@ -154,23 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary));
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 15),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
   BarChartGroupData _makeGroupData(int x, double y, Color color) {
-    return BarChartGroupData(x: x, barRods: [BarChartRodData(toY: y, color: color, width: 18, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))]);
+    return BarChartGroupData(x: x, barRods: [BarChartRodData(toY: y, color: color, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4)))]);
   }
 }
