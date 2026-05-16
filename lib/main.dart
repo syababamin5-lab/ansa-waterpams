@@ -9,11 +9,10 @@ import 'features/dashboard/dashboard_screen.dart';
 import 'features/pelanggan/pelanggan_list_screen.dart';
 import 'features/transaksi/catat_meter_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/riwayat/riwayat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Inisialisasi format tanggal/uang bahasa Indonesia
   await initializeDateFormatting('id_ID', null);
   
   await Supabase.initialize(
@@ -37,7 +36,7 @@ class AnsaWaterApp extends StatelessWidget {
     return MaterialApp(
       title: 'Ansa Water',
       debugShowCheckedModeBanner: false,
-      locale: const Locale('id', 'ID'), // Set default ke Indonesia
+      locale: const Locale('id', 'ID'),
       builder: DevicePreview.appBuilder,
       theme: AppTheme.lightTheme,
       home: const MainNavigation(),
@@ -59,6 +58,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const DashboardScreen(),
     const PelangganListScreen(),
     const CatatMeterScreen(),
+    const RiwayatScreen(),
     const SettingsScreen(),
   ];
 
@@ -86,11 +86,14 @@ class _MainNavigationState extends State<MainNavigation> {
           unselectedItemColor: Colors.grey.withOpacity(0.5),
           showSelectedLabels: true,
           showUnselectedLabels: true,
+          selectedFontSize: 11,
+          unselectedFontSize: 10,
           elevation: 0,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Beranda'),
             BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Pelanggan'),
-            BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat Meter'),
+            BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat'),
+            BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Riwayat'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Biaya'),
           ],
         ),
