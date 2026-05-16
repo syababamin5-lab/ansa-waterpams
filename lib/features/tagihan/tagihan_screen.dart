@@ -15,6 +15,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
   List<Map<String, dynamic>> _pendingTagihan = [];
   List<Map<String, dynamic>> _lunasTagihan = [];
   List<Map<String, dynamic>> _filteredLunas = [];
+  Map<String, dynamic>? _currentSettings;
   
   String _filterType = 'Semua';
   bool _isLoading = true;
@@ -29,7 +30,9 @@ class _TagihanScreenState extends State<TagihanScreen> {
   void _loadData() async {
     try {
       final transaksi = await _supabaseService.getAllTransaksi();
+      final settings = await _supabaseService.getSettings();
       setState(() {
+        _currentSettings = settings;
         _pendingTagihan = transaksi.where((t) => t['status'] != 'LUNAS').toList();
         _lunasTagihan = transaksi.where((t) => t['status'] == 'LUNAS').toList();
         _applyFilter();
@@ -175,20 +178,25 @@ class _TagihanScreenState extends State<TagihanScreen> {
     final tglCatat = DateFormat('dd MMM yyyy').format(DateTime.parse(t['tanggal_catat']));
     _selectedPaymentDate = DateTime.now();
 
+    // Fallback harga jika data lama (0)
+    final harga = (t['harga_saat_ini'] ?? 0) > 0 ? t['harga_saat_ini'] : (_currentSettings?['harga_per_kubik'] ?? 0);
+    final beban = (t['beban_saat_ini'] ?? 0) > 0 ? t['beban_saat_ini'] : (_currentSettings?['biaya_beban'] ?? 0);
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Konfirmasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+            title: const Text('Konfirmasi Bayar', style: TextStyle(fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
                 _buildDetailRow('Periode', tglCatat),
                 const Divider(),
-                GestureDetector(
+                const SizedBox(height: 10),
+                InkWell(
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -200,13 +208,29 @@ class _TagihanScreenState extends State<TagihanScreen> {
                       setDialogState(() => _selectedPaymentDate = picked);
                     }
                   },
-                  child: _buildDetailRow('Tgl Bayar (Klik)', DateFormat('dd MMM yyyy').format(_selectedPaymentDate), color: Colors.blue, isBold: true),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Tanggal Bayar:', style: TextStyle(fontSize: 12, color: Colors.blue)),
+                        Text(DateFormat('dd MMM yyyy').format(_selectedPaymentDate), 
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                      ],
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 15),
                 _buildDetailRow('Meter Lalu', '${t['meter_lalu']} m³'),
                 _buildDetailRow('Meter Baru', '${t['meter_skrg']} m³'),
                 _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
-                _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
-                _buildDetailRow('Biaya Beban', formatRupiah(t['beban_saat_ini'] ?? 0)),
+                _buildDetailRow('Harga/m³', formatRupiah(harga)),
+                _buildDetailRow('Biaya Beban', formatRupiah(beban)),
                 const Divider(),
                 _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.blue),
               ],
@@ -236,6 +260,8 @@ class _TagihanScreenState extends State<TagihanScreen> {
         ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(t['tanggal_bayar']))
         : '-';
 
+    final harga = (t['harga_saat_ini'] ?? 0) > 0 ? t['harga_saat_ini'] : (_currentSettings?['harga_per_kubik'] ?? 0);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -251,7 +277,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
             _buildDetailRow('Tgl Bayar', tglBayar),
             const Divider(),
             _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
-            _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
+            _buildDetailRow('Harga/m³', formatRupiah(harga)),
             _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.green),
           ],
         ),
