@@ -120,7 +120,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () => _kirimWhatsApp(t),
-            icon: const Icon(Icons.whatsapp, color: Colors.white),
+            icon: const Icon(Icons.chat, color: Colors.white),
             label: const Text('WhatsApp', style: TextStyle(color: Colors.white)),
           ),
         ],
