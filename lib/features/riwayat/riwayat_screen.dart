@@ -36,6 +36,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       });
     } catch (e) {
       debugPrint("Error: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -122,13 +123,19 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         ),
         actions: [
           TextButton.icon(
-            onPressed: () => _cetakPdf(t),
+            onPressed: () {
+               Navigator.pop(context);
+               _cetakPdf(t);
+            },
             icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
             label: const Text('Cetak', style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            onPressed: () => _kirimWhatsApp(t),
+            onPressed: () {
+               Navigator.pop(context);
+               _kirimWhatsApp(t);
+            },
             icon: const Icon(Icons.chat, color: Colors.white),
             label: const Text('WhatsApp', style: TextStyle(color: Colors.white)),
           ),
@@ -167,59 +174,48 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _kirimWhatsApp(Map<String, dynamic> t) async {
-    setState(() => _isLoading = true); // Tampilkan loading sebentar
+    setState(() => _isLoading = true);
     
     try {
-      // AMBIL DATA TERBARU DARI DATABASE BERDASARKAN ID
-      final latestPelanggan = await _supabaseService.client
-          .from('pelanggan')
-          .select()
-          .eq('id', t['id_pelanggan'])
-          .single();
-
+      final latestPelanggan = await _supabaseService.getPelangganById(t['id_pelanggan']);
       final nama = latestPelanggan['nama'];
       final phone = latestPelanggan['telepon']?.toString() ?? '';
       
       if (phone.isEmpty || phone == '-') {
-        _showSnack("Nomor WA warga ini belum diisi! Silakan edit di menu Pelanggan.");
-        setState(() => _isLoading = false);
+        _showSnack("Nomor WA warga ini belum diisi!");
         return;
       }
 
-    final total = formatRupiah(t['total_bayar']);
-    final pemakaian = t['pemakaian'];
-    final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
-    final tgl = DateFormat('dd/MM/yyyy').format(DateTime.parse(t['tanggal_catat']));
+      final total = formatRupiah(t['total_bayar']);
+      final pemakaian = t['pemakaian'];
+      final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
+      final tgl = DateFormat('dd/MM/yyyy').format(DateTime.parse(t['tanggal_catat']));
 
-    String pesan = "Halo *$nama*,\n\n"
-        "Ini rincian tagihan air *$pamsimas* Anda ($tgl):\n"
-        "💧 Pemakaian: $pemakaian m³\n"
-        "💰 Total: *$total*\n\n"
-        "Mohon segera dibayar ya. Terima kasih.";
+      String pesan = "Halo *$nama*,\n\n"
+          "Rincian tagihan air *$pamsimas* ($tgl):\n"
+          "💧 Pemakaian: $pemakaian m³\n"
+          "💰 Total: *$total*\n\n"
+          "Terima kasih.";
 
-    // Pembersihan nomor super ketat
-    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    if (cleanPhone.startsWith('0')) {
-      cleanPhone = '62${cleanPhone.substring(1)}';
-    } else if (cleanPhone.startsWith('8')) {
-      cleanPhone = '62$cleanPhone';
-    }
-    
-    final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
-    final uri = Uri.parse(url);
-    
-    try {
+      String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '62${cleanPhone.substring(1)}';
+      } else if (cleanPhone.startsWith('8')) {
+        cleanPhone = '62$cleanPhone';
+      }
+      
+      final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
+      final uri = Uri.parse(url);
+      
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        // Fallback jika mode external gagal
         await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
-      _showSnack("Gagal membuka WA: Pastikan nomor benar.");
+      _showSnack("Gagal membuka WA: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -12,6 +12,11 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  Future<Map<String, dynamic>> getPelangganById(String id) async {
+    final response = await client.from('pelanggan').select().eq('id', id).single();
+    return Map<String, dynamic>.from(response);
+  }
+
   Future<void> insertPelanggan(String nama, String alamat, String telepon, double meterAwal) async {
     await client.from('pelanggan').insert({
       'nama': nama,
