@@ -58,7 +58,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     final t = _riwayat[index];
                     final date = DateTime.parse(t['tanggal_catat']);
                     return Card(
-                      margin: const EdgeInsets.bottom(15),
+                      margin: const EdgeInsets.only(bottom: 15),
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
