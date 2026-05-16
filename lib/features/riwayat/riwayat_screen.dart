@@ -186,36 +186,56 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         return;
       }
 
-      // LANGSUNG SHARE PDF (DI HP AKAN MUNCUL PILIHAN WHATSAPP)
+      // Membuat Struk Digital Teks yang Rapi
+      final total = formatRupiah(t['total_bayar']);
+      final pemakaian = t['pemakaian'];
+      final pamsimas = (_settings?['nama_pamsimas'] ?? 'ANSA WATER').toUpperCase();
+      final tgl = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(t['tanggal_catat']));
+      final meterLalu = t['meter_lalu'];
+      final meterSkrg = t['meter_skrg'];
+
       final data = {
         'nama': nama,
         'alamat': latestPelanggan['alamat'],
-        'meter_lalu': t['meter_lalu'],
-        'meter_skrg': t['meter_skrg'],
-        'pemakaian': t['pemakaian'],
+        'meter_lalu': meterLalu,
+        'meter_skrg': meterSkrg,
+        'pemakaian': pemakaian,
         'harga': t['tarif_per_kubik'],
-        'beban': t['total_bayar'] - (t['pemakaian'] * t['tarif_per_kubik']),
+        'beban': t['total_bayar'] - (pemakaian * t['tarif_per_kubik']),
         'total': t['total_bayar'],
         'tanggal': DateFormat('dd MMMM yyyy').format(DateTime.parse(t['tanggal_catat'])),
-        'pamsimas': _settings?['nama_pamsimas'] ?? 'ANSA WATER',
+        'pamsimas': pamsimas,
       };
-      
-      // Membuka menu Berbagi File PDF
-      await _pdfService.shareInvoice(data);
-      
-      // Beri tahu user cara melampirkan di Chrome/Web
-      _showSnack("File PDF terdownload. Klik ikon 📎 di WA lalu pilih file tersebut.");
 
-      // Tetap buka chat WA untuk mengirim pesan teks sebagai pengantar
-      final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
-      String pesan = "Halo *$nama*,\nBerikut struk tagihan air *$pamsimas* Anda. Terima kasih.";
-      
+      String strukDigital = 
+          "━━━━━━━━━━━━━━━\n"
+          "     *STRUK TAGIHAN AIR*     \n"
+          "        *$pamsimas*        \n"
+          "━━━━━━━━━━━━━━━\n"
+          "Pelanggan : *$nama*\n"
+          "Tanggal   : $tgl\n"
+          "━━━━━━━━━━━━━━━\n"
+          "Meter Lalu: $meterLalu m³\n"
+          "Meter Baru: $meterSkrg m³\n"
+          "Pemakaian : *$pemakaian m³*\n"
+          "━━━━━━━━━━━━━━━\n"
+          "TOTAL BAYAR:\n"
+          "👉 *${total}*\n"
+          "━━━━━━━━━━━━━━━\n"
+          "Simpan struk ini sebagai\nbukti pembayaran sah.\n"
+          "Terima kasih.";
+
       String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
       if (cleanPhone.startsWith('0')) cleanPhone = '62${cleanPhone.substring(1)}';
       else if (cleanPhone.startsWith('8')) cleanPhone = '62$cleanPhone';
 
-      final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
+      final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(strukDigital)}";
+      
+      // Buka WA (Sekali klik langsung terkirim di Web/HP)
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+      // Tetap download PDF sebagai cadangan/arsip jika diperlukan
+      await _pdfService.shareInvoice(data);
 
     } catch (e) {
       _showSnack("Gagal memproses struk: $e");
