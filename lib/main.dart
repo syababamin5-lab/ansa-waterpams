@@ -59,7 +59,6 @@ class _MainNavigationState extends State<MainNavigation> {
     const PelangganListScreen(),
     const CatatMeterScreen(),
     const RiwayatScreen(),
-    const SettingsScreen(),
   ];
 
   @override
@@ -94,7 +93,6 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Pelanggan'),
             BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat'),
             BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Riwayat'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Biaya'),
           ],
         ),
       ),
