@@ -172,7 +172,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
     final phone = t['pelanggan']['telepon'] ?? '';
     // Hapus karakter non-angka
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    
+    // Jika diawali angka 0, ubah ke 62
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62${cleanPhone.substring(1)}';
+    }
     
     final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
     
