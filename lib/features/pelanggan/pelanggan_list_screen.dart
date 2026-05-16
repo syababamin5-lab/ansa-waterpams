@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/database/supabase_service.dart';
 
@@ -41,6 +42,11 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String formatRupiah(dynamic amount) {
+    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
+    return "${formatter.format(amount)},-";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,6 +73,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                         final p = _pelanggan[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           child: ListTile(
                             onTap: () => _showPelangganDetail(p),
                             leading: CircleAvatar(
@@ -92,7 +99,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
         title: const Text('Detail Pelanggan', style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -105,25 +112,27 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
             const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  elevation: 0,
                 ),
                 onPressed: () {
                   Navigator.pop(context);
                   _showUsageChart(p);
                 },
-                icon: const Icon(Icons.bar_chart),
-                label: const Text('Rincian Pemakaian Air'),
+                icon: const Icon(Icons.bar_chart_rounded),
+                label: const Text('Rincian Pemakaian Air', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: () => _confirmDelete(p),
           ),
           const Spacer(),
@@ -155,77 +164,184 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
       final history = await _supabaseService.getTransaksiByPelanggan(p['id']);
       Navigator.pop(context); // Close loading
 
-      // Ambil 12 data terakhir
-      final recentHistory = history.length > 12 
-          ? history.sublist(history.length - 12) 
-          : history;
+      final recentHistory = history.length > 12 ? history.sublist(history.length - 12) : history;
+      bool isChartView = true;
 
       if (!mounted) return;
 
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(p['nama'], style: const TextStyle(fontWeight: FontWeight.bold)),
-              const Text('Tren Pemakaian 12 Bulan Terakhir', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 300,
-            child: recentHistory.isEmpty 
-              ? const Center(child: Text('Belum ada riwayat pemakaian'))
-              : BarChart(
-                  BarChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: FlTitlesData(
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            int idx = value.toInt();
-                            if (idx < 0 || idx >= recentHistory.length) return const SizedBox();
-                            final date = DateTime.parse(recentHistory[idx]['tanggal_catat']);
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 5),
-                              child: Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 10)),
-                            );
-                          },
-                        ),
-                      ),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p['nama'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        const Text('Analisis Pemakaian', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
                     ),
-                    borderData: FlBorderData(show: false),
-                    barGroups: recentHistory.asMap().entries.map((entry) {
-                      return BarChartGroupData(
-                        x: entry.key,
-                        barRods: [
-                          BarChartRodData(
-                            toY: (entry.value['pemakaian'] as num).toDouble(),
-                            color: AppTheme.primaryColor,
-                            width: 15,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                          ),
-                        ],
-                      );
-                    }).toList(),
                   ),
-                ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
-          ],
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.bar_chart, color: isChartView ? AppTheme.primaryColor : Colors.grey),
+                          onPressed: () => setDialogState(() => isChartView = true),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.list_alt, color: !isChartView ? AppTheme.primaryColor : Colors.grey),
+                          onPressed: () => setDialogState(() => isChartView = false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: 350,
+                child: recentHistory.isEmpty 
+                  ? const Center(child: Text('Belum ada riwayat pemakaian'))
+                  : isChartView 
+                    ? _buildPremiumChart(recentHistory) 
+                    : _buildNumericTable(recentHistory),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold))),
+              ],
+            );
+          }
         ),
       );
     } catch (e) {
-      Navigator.pop(context); // Close loading
-      _showSnackBar("Gagal memuat grafik: $e");
+      if (mounted) Navigator.pop(context);
+      _showSnackBar("Gagal memuat statistik: $e");
     }
+  }
+
+  Widget _buildPremiumChart(List<Map<String, dynamic>> data) {
+    return Column(
+      children: [
+        Expanded(
+          child: BarChart(
+            BarChartData(
+              gridData: const FlGridData(show: false),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true, 
+                    reservedSize: 30,
+                    getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  )
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      int idx = value.toInt();
+                      if (idx < 0 || idx >= data.length) return const SizedBox();
+                      final date = DateTime.parse(data[idx]['tanggal_catat']);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      );
+                    },
+                  ),
+                ),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: data.asMap().entries.map((entry) {
+                return BarChartGroupData(
+                  x: entry.key,
+                  barRods: [
+                    BarChartRodData(
+                      toY: (entry.value['pemakaian'] as num).toDouble(),
+                      gradient: LinearGradient(
+                        colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.6)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      width: 18,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: 30, // Max height placeholder
+                        color: Colors.grey.withOpacity(0.05),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipBgColor: Colors.black87,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    return BarTooltipItem(
+                      '${rod.toY} m³',
+                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.9, 0.9)),
+        ),
+        const SizedBox(height: 10),
+        const Text('* Satuan dalam Meter Kubik (m³)', style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildNumericTable(List<Map<String, dynamic>> data) {
+    return ListView.separated(
+      itemCount: data.length,
+      separatorBuilder: (context, index) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final t = data[data.length - 1 - index]; // Reverse order
+        final date = DateTime.parse(t['tanggal_catat']);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 45,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                child: Column(
+                  children: [
+                    Text(DateFormat('MMM').format(date), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue)),
+                    Text(DateFormat('yy').format(date), style: const TextStyle(fontSize: 10, color: Colors.blue)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Pemakaian: ${t['pemakaian']} m³', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Meter: ${t['meter_lalu']} ➔ ${t['meter_skrg']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+              ),
+              Text(formatRupiah(t['total_bayar']), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+            ],
+          ),
+        );
+      },
+    ).animate().fadeIn();
   }
 
   void _confirmDelete(Map<String, dynamic> p) {
@@ -301,7 +417,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
 
   Widget _detailItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
