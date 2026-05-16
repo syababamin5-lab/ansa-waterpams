@@ -158,33 +158,51 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _kirimWhatsApp(Map<String, dynamic> t) async {
-    final nama = t['pelanggan']['nama'];
+    final pelanggan = t['pelanggan'];
+    final nama = pelanggan['nama'];
+    final phone = pelanggan['telepon']?.toString() ?? '';
+    
+    if (phone.isEmpty || phone == '-') {
+      _showSnack("Nomor WA warga ini belum diisi! Silakan edit di menu Pelanggan.");
+      return;
+    }
+
     final total = formatRupiah(t['total_bayar']);
     final pemakaian = t['pemakaian'];
     final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
     final tgl = DateFormat('dd/MM/yyyy').format(DateTime.parse(t['tanggal_catat']));
 
-    String pesan = "Halo Bapak/Ibu *$nama*,\n\n"
-        "Ini adalah rincian tagihan air *$pamsimas* Anda untuk periode $tgl:\n"
-        "- Pemakaian: $pemakaian m³\n"
-        "- Total Tagihan: *$total*\n\n"
-        "Mohon segera melakukan pembayaran. Terima kasih.";
+    String pesan = "Halo *$nama*,\n\n"
+        "Ini rincian tagihan air *$pamsimas* Anda ($tgl):\n"
+        "💧 Pemakaian: $pemakaian m³\n"
+        "💰 Total: *$total*\n\n"
+        "Mohon segera dibayar ya. Terima kasih.";
 
-    final phone = t['pelanggan']['telepon'] ?? '';
-    // Hapus karakter non-angka
-    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    // Pembersihan nomor super ketat
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
     
-    // Jika diawali angka 0, ubah ke 62
     if (cleanPhone.startsWith('0')) {
       cleanPhone = '62${cleanPhone.substring(1)}';
+    } else if (cleanPhone.startsWith('8')) {
+      cleanPhone = '62$cleanPhone';
     }
     
     final url = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(pesan)}";
+    final uri = Uri.parse(url);
     
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal membuka WhatsApp")));
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback jika mode external gagal
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      _showSnack("Gagal membuka WA: Pastikan nomor benar.");
     }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
