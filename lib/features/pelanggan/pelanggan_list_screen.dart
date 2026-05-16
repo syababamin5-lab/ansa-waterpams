@@ -46,36 +46,95 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
       appBar: AppBar(title: const Text('Data Pelanggan')),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _pelanggan.isEmpty
-              ? const Center(child: Text('Belum ada data pelanggan'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _pelanggan.length,
-                  itemBuilder: (context, index) {
-                    final p = _pelanggan[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text(p['nama'] ?? 'Tanpa Nama'),
-                        subtitle: Text(p['alamat'] ?? '-'),
-                      ),
-                    );
-                  },
-                ),
+          : RefreshIndicator(
+              onRefresh: () async => _refreshPelanggan(),
+              child: _pelanggan.isEmpty
+                  ? const Center(child: Text('Belum ada data pelanggan'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _pelanggan.length,
+                      itemBuilder: (context, index) {
+                        final p = _pelanggan[index];
+                        return Card(
+                          margin: const EdgeInsets.bottom(10),
+                          child: ListTile(
+                            onTap: () => _showPelangganDetail(p),
+                            leading: CircleAvatar(
+                              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                              child: const Icon(Icons.person, color: AppTheme.primaryColor),
+                            ),
+                            title: Text(p['nama'] ?? 'Tanpa Nama', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(p['alamat'] ?? '-'),
+                            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+            ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddPelangganDialog(context),
+        onPressed: () => _showAddEditDialog(context),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _showAddPelangganDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final addressController = TextEditingController();
-    final meterController = TextEditingController();
+  void _showPelangganDetail(Map<String, dynamic> p) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Detail Pelanggan', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailItem('Nama', p['nama']),
+            _detailItem('Alamat', p['alamat'] ?? '-'),
+            _detailItem('WhatsApp', p['telepon'] ?? '-'),
+            _detailItem('Meter Terakhir', '${p['meter_terakhir']} m³'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _showAddEditDialog(context, p: p);
+            },
+            icon: const Icon(Icons.edit, size: 18),
+            label: const Text('Edit Data'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  void _showAddEditDialog(BuildContext context, {Map<String, dynamic>? p}) {
+    final nameController = TextEditingController(text: p?['nama']);
+    final addressController = TextEditingController(text: p?['alamat']);
+    final phoneController = TextEditingController(text: p?['telepon']);
+    final meterController = TextEditingController(text: p?['meter_awal']?.toString());
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -84,14 +143,18 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Tambah Pelanggan Baru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(p == null ? 'Tambah Pelanggan' : 'Edit Pelanggan', 
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
             TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Pelanggan')),
             TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Alamat')),
-            TextField(controller: meterController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Meter Awal')),
-            const SizedBox(height: 20),
+            TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Nomor WhatsApp (Contoh: 0812...)')),
+            if (p == null) 
+              TextField(controller: meterController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Meter Awal')),
+            const SizedBox(height: 25),
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
                 onPressed: () async {
                   try {
@@ -99,23 +162,33 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                       _showSnackBar("Nama harus diisi!");
                       return;
                     }
-                    await _supabaseService.insertPelanggan(
-                      nameController.text,
-                      addressController.text,
-                      "", 
-                      double.tryParse(meterController.text) ?? 0,
-                    );
+                    
+                    if (p == null) {
+                      await _supabaseService.insertPelanggan(
+                        nameController.text,
+                        addressController.text,
+                        phoneController.text,
+                        double.tryParse(meterController.text) ?? 0,
+                      );
+                    } else {
+                      await _supabaseService.updatePelanggan(p['id'], {
+                        'nama': nameController.text,
+                        'alamat': addressController.text,
+                        'telepon': phoneController.text,
+                      });
+                    }
+                    
                     Navigator.pop(context);
                     _refreshPelanggan();
-                    _showSnackBar("Data berhasil disimpan ke Cloud!");
+                    _showSnackBar("Data berhasil disimpan!");
                   } catch (e) {
-                    _showSnackBar("Error Simpan: $e");
+                    _showSnackBar("Error: $e");
                   }
                 },
-                child: const Text('Simpan Ke Cloud'),
+                child: const Text('Simpan Perubahan'),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
           ],
         ),
       ),

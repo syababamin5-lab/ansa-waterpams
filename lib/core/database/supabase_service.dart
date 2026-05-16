@@ -22,6 +22,10 @@ class SupabaseService {
     });
   }
 
+  Future<void> updatePelanggan(String id, Map<String, dynamic> data) async {
+    await client.from('pelanggan').update(data).eq('id', id);
+  }
+
   // --- CRUD Transaksi ---
   Future<void> insertTransaksi(Map<String, dynamic> data) async {
     // 1. Simpan Transaksi
