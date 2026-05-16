@@ -22,6 +22,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double _totalPendapatan = 0;
   int _countSudahBayar = 0;
   double _belumBayar = 0;
+  List<Map<String, dynamic>> _chartData = [];
 
   @override
   void initState() {
@@ -39,7 +40,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       double hutang = 0;
       int lunasCount = 0;
 
+      // Grouping untuk Grafik (Sama dengan logika Pelanggan tapi untuk ALL warga)
+      Map<String, Map<String, dynamic>> grouped = {};
+      
       for (var t in transaksi) {
+        // Logika statistik
         double bayar = (t['total_bayar'] ?? 0).toDouble();
         if (t['status'] == 'LUNAS') {
           pendapatan += bayar;
@@ -47,6 +52,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else {
           hutang += bayar;
         }
+
+        // Logika grouping grafik
+        final date = DateTime.parse(t['tanggal_catat']);
+        final key = DateFormat('yyyy-MM').format(date);
+        
+        if (!grouped.containsKey(key)) {
+          grouped[key] = {
+            'tanggal': t['tanggal_catat'],
+            'pemakaian': 0.0,
+          };
+        }
+        grouped[key]!['pemakaian'] += (t['pemakaian'] as num).toDouble();
+      }
+
+      // Sortir grafik dan ambil 12 bln terakhir
+      var sortedKeys = grouped.keys.toList()..sort();
+      var finalChartData = sortedKeys.map((k) => grouped[k]!).toList();
+      if (finalChartData.length > 12) {
+        finalChartData = finalChartData.sublist(finalChartData.length - 12);
       }
 
       setState(() {
@@ -58,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _totalPendapatan = pendapatan;
         _countSudahBayar = lunasCount;
         _belumBayar = hutang;
+        _chartData = finalChartData;
         
         _isLoading = false;
       });
@@ -91,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 15),
                     _buildStatsGrid(),
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Grafik Pemakaian (m³)'),
+                    _buildSectionTitle('Grafik Pemakaian Air (Total m³)'),
                     const SizedBox(height: 15),
                     _buildChart(),
                     const SizedBox(height: 30),
@@ -111,17 +136,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 150,
+      expandedHeight: 120,
+      floating: true,
       pinned: true,
+      backgroundColor: AppTheme.primaryColor,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(_namaPamsimasController.text.isEmpty ? 'ANSA WATER' : _namaPamsimasController.text, 
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(_namaPamsimasController.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         background: Container(
-          decoration: AppTheme.gradientDecoration,
-          child: const Center(child: Icon(Icons.water_drop, color: Colors.white, size: 40)),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary));
   }
 
   Widget _buildStatsGrid() {
@@ -129,19 +164,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
-      childAspectRatio: 1.3,
-      mainAxisSpacing: 15,
       crossAxisSpacing: 15,
+      mainAxisSpacing: 15,
+      childAspectRatio: 1.5,
       children: [
-        _buildStatCard('Total Warga', _totalWarga.toString(), Icons.group, Colors.blue),
-        _buildStatCard('Total Pendapatan', formatRupiah(_totalPendapatan), Icons.monetization_on, Colors.purple),
-        _buildStatCard('Sudah Bayar', '$_countSudahBayar Transaksi', Icons.check_circle, Colors.green),
-        _buildStatCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning, Colors.orange),
+        _statCard('Total Warga', _totalWarga.toString(), Icons.people, Colors.blue),
+        _statCard('Total Pendapatan', formatRupiah(_totalPendapatan), Icons.payments, Colors.green),
+        _statCard('Lunas (Tagihan)', _countSudahBayar.toString(), Icons.check_circle, Colors.teal),
+        _statCard('Belum Bayar', formatRupiah(_belumBayar), Icons.warning, Colors.orange),
       ],
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _statCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: AppTheme.cardDecoration,
@@ -151,33 +186,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ),
-          Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+          Text(title, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+          FittedBox(child: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
         ],
       ),
     );
   }
 
   Widget _buildChart() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_chartData.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Belum ada data pemakaian')));
+
     return Container(
-      height: 200,
-      padding: const EdgeInsets.all(20),
+      height: 250,
+      padding: const EdgeInsets.fromLTRB(10, 25, 25, 10),
       decoration: AppTheme.cardDecoration,
-      child: BarChart(
-        BarChartData(
-          gridData: const FlGridData(show: false),
-          titlesData: const FlTitlesData(show: false),
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.1), strokeWidth: 1),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+              )
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  int idx = value.toInt();
+                  if (idx < 0 || idx >= _chartData.length) return const SizedBox();
+                  final date = DateTime.parse(_chartData[idx]['tanggal']);
+                  return Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold));
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
           borderData: FlBorderData(show: false),
-          barGroups: [
-            _makeGroupData(0, 5, Colors.blue),
-            _makeGroupData(1, 8, Colors.blue),
-            _makeGroupData(2, 4, Colors.blue),
-            _makeGroupData(3, 10, AppTheme.primaryColor),
-            _makeGroupData(4, 7, Colors.blue),
-            _makeGroupData(5, 6, Colors.blue),
+          lineBarsData: [
+            LineChartBarData(
+              spots: _chartData.asMap().entries.map((entry) {
+                return FlSpot(entry.key.toDouble(), (entry.value['pemakaian'] as num).toDouble());
+              }).toList(),
+              isCurved: true,
+              gradient: LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.5)]),
+              barWidth: 4,
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [AppTheme.primaryColor.withOpacity(0.2), AppTheme.primaryColor.withOpacity(0.0)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -190,15 +261,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: AppTheme.cardDecoration,
       child: Column(
         children: [
-          TextField(controller: _namaPamsimasController, decoration: const InputDecoration(labelText: 'Nama PAMSIMAS')),
-          TextField(controller: _hargaController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga / m³')),
-          TextField(controller: _bebanController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Biaya Beban')),
-          const SizedBox(height: 20),
+          _inputSettings('Nama Pamsimas', _namaPamsimasController, Icons.business),
+          const SizedBox(height: 15),
+          _inputSettings('Harga per m³', _hargaController, Icons.money, isNumber: true),
+          const SizedBox(height: 15),
+          _inputSettings('Biaya Beban Tetap', _bebanController, Icons.receipt, isNumber: true),
+          const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
+            height: 50,
             child: ElevatedButton(
-              onPressed: _saveSettings,
-              child: const Text('Simpan Pengaturan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _updateSettings,
+              child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -206,25 +284,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _saveSettings() async {
+  Widget _inputSettings(String label, TextEditingController controller, IconData icon, {bool isNumber = false}) {
+    return TextField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _updateSettings() async {
     try {
       await _supabaseService.updateSettings({
         'harga_per_kubik': double.parse(_hargaController.text),
         'biaya_beban': double.parse(_bebanController.text),
         'nama_pamsimas': _namaPamsimasController.text,
       });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pengaturan berhasil disimpan!')));
       _loadAllData();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pengaturan disimpan!")));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     }
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary));
-  }
-
-  BarChartGroupData _makeGroupData(int x, double y, Color color) {
-    return BarChartGroupData(x: x, barRods: [BarChartRodData(toY: y, color: color, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4)))]);
   }
 }
