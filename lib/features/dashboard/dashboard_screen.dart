@@ -23,7 +23,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _countSudahBayar = 0;
   double _belumBayar = 0;
   List<Map<String, dynamic>> _chartData = [];
-
+  DateTimeRange? _selectedDateRange;
   @override
   void initState() {
     super.initState();
@@ -44,6 +44,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Map<String, Map<String, dynamic>> grouped = {};
       
       for (var t in transaksi) {
+        final date = DateTime.parse(t['tanggal_catat']);
+        
+        // Filter Tanggal
+        if (_selectedDateRange != null) {
+          if (date.isBefore(_selectedDateRange!.start) || 
+              date.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
+            continue; // Skip data yang tidak masuk rentang
+          }
+        }
+
         // Logika statistik
         double bayar = (t['total_bayar'] ?? 0).toDouble();
         if (t['status'] == 'LUNAS') {
@@ -116,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 15),
                     _buildStatsGrid(),
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Grafik Pemakaian Air (Total m³)'),
+                    _buildChartHeader(),
                     const SizedBox(height: 15),
                     _buildChart(),
                     const SizedBox(height: 30),
@@ -157,6 +167,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary));
+  }
+
+  Widget _buildChartHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text('Grafik Pemakaian (m³)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+        TextButton.icon(
+          onPressed: () async {
+            final range = await showDateRangePicker(
+              context: context,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+              initialDateRange: _selectedDateRange,
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: const ColorScheme.light(
+                      primary: AppTheme.primaryColor,
+                      onPrimary: Colors.white,
+                      onSurface: Colors.black,
+                    ),
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            if (range != null) {
+              setState(() {
+                _selectedDateRange = range;
+                _isLoading = true;
+              });
+              _loadAllData();
+            }
+          },
+          icon: const Icon(Icons.date_range, size: 16),
+          label: Text(
+            _selectedDateRange == null 
+              ? 'Semua Waktu' 
+              : '${DateFormat('dd MMM yy').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM yy').format(_selectedDateRange!.end)}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.primaryColor,
+            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildStatsGrid() {
@@ -237,6 +298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                interval: 1, // Agar label bulan tidak ganda
                 getTitlesWidget: (value, meta) {
                   int idx = value.toInt();
                   if (idx < 0 || idx >= _chartData.length) return const SizedBox();
