@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/database/db_helper.dart';
+import '../../core/database/supabase_service.dart';
 
 class PelangganListScreen extends StatefulWidget {
   const PelangganListScreen({super.key});
@@ -10,7 +10,7 @@ class PelangganListScreen extends StatefulWidget {
 }
 
 class _PelangganListScreenState extends State<PelangganListScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final SupabaseService _supabaseService = SupabaseService();
   List<Map<String, dynamic>> _pelanggan = [];
 
   @override
@@ -20,10 +20,14 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
   }
 
   void _refreshPelanggan() async {
-    final data = await _dbHelper.getPelanggan();
-    setState(() {
-      _pelanggan = data;
-    });
+    try {
+      final data = await _supabaseService.getPelanggan();
+      setState(() {
+        _pelanggan = data;
+      });
+    } catch (e) {
+      debugPrint("Error loading pelanggan: $e");
+    }
   }
 
   @override
@@ -43,7 +47,7 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
                 return Card(
                   child: ListTile(
                     title: Text(p['nama']),
-                    subtitle: Text(p['alamat']),
+                    subtitle: Text(p['alamat'] ?? '-'),
                   ),
                 );
               },
@@ -71,12 +75,12 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
             TextField(controller: meterController, decoration: const InputDecoration(labelText: 'Meter Awal')),
             ElevatedButton(
               onPressed: () async {
-                await _dbHelper.insertPelanggan({
-                  'nama': nameController.text,
-                  'alamat': addressController.text,
-                  'meter_awal': double.tryParse(meterController.text) ?? 0,
-                  'meter_terakhir': double.tryParse(meterController.text) ?? 0,
-                });
+                await _supabaseService.insertPelanggan(
+                  nameController.text,
+                  addressController.text,
+                  "", // telepon
+                  double.tryParse(meterController.text) ?? 0,
+                );
                 Navigator.pop(context);
                 _refreshPelanggan();
               },

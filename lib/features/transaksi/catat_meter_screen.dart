@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/database/db_helper.dart';
+import '../../core/database/supabase_service.dart';
 import '../reports/pdf_service.dart';
 
 class CatatMeterScreen extends StatefulWidget {
@@ -12,7 +12,7 @@ class CatatMeterScreen extends StatefulWidget {
 }
 
 class _CatatMeterScreenState extends State<CatatMeterScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final SupabaseService _supabaseService = SupabaseService();
   final PdfService _pdfService = PdfService();
   
   List<Map<String, dynamic>> _pelanggan = [];
@@ -26,10 +26,14 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
   }
 
   void _loadPelanggan() async {
-    final data = await _dbHelper.getPelanggan();
-    setState(() {
-      _pelanggan = data;
-    });
+    try {
+      final data = await _supabaseService.getPelanggan();
+      setState(() {
+        _pelanggan = data;
+      });
+    } catch (e) {
+      debugPrint("Error loading pelanggan: $e");
+    }
   }
 
   @override
@@ -64,7 +68,7 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
     double pemakaian = meterBaru - _selectedPelanggan!['meter_terakhir'];
     double total = pemakaian * 3000;
 
-    await _dbHelper.insertTransaksi({
+    await _supabaseService.insertTransaksi({
       'id_pelanggan': _selectedPelanggan!['id'],
       'meter_lalu': _selectedPelanggan!['meter_terakhir'],
       'meter_skrg': meterBaru,

@@ -75,3 +75,6 @@ coverage/
 **/stacktrace
 **/heap_dump
 **/cpu_profile
+
+# Secrets
+lib/core/constants/secrets.dart
