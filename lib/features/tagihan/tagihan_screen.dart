@@ -12,7 +12,11 @@ class TagihanScreen extends StatefulWidget {
 
 class _TagihanScreenState extends State<TagihanScreen> {
   final SupabaseService _supabaseService = SupabaseService();
-  List<Map<String, dynamic>> _allTagihan = [];
+  List<Map<String, dynamic>> _pendingTagihan = [];
+  List<Map<String, dynamic>> _lunasTagihan = [];
+  List<Map<String, dynamic>> _filteredLunas = [];
+  
+  String _filterType = 'Semua'; // Semua, Minggu, Bulan
   bool _isLoading = true;
 
   @override
@@ -25,13 +29,34 @@ class _TagihanScreenState extends State<TagihanScreen> {
     try {
       final transaksi = await _supabaseService.getAllTransaksi();
       setState(() {
-        _allTagihan = transaksi;
+        _pendingTagihan = transaksi.where((t) => t['status'] != 'LUNAS').toList();
+        _lunasTagihan = transaksi.where((t) => t['status'] == 'LUNAS').toList();
+        _applyFilter();
         _isLoading = false;
       });
     } catch (e) {
       debugPrint("Error: $e");
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _applyFilter() {
+    final now = DateTime.now();
+    setState(() {
+      if (_filterType == 'Minggu') {
+        _filteredLunas = _lunasTagihan.where((t) {
+          final date = DateTime.parse(t['tanggal_catat']);
+          return now.difference(date).inDays <= 7;
+        }).toList();
+      } else if (_filterType == 'Bulan') {
+        _filteredLunas = _lunasTagihan.where((t) {
+          final date = DateTime.parse(t['tanggal_catat']);
+          return date.month == now.month && date.year == now.year;
+        }).toList();
+      } else {
+        _filteredLunas = List.from(_lunasTagihan);
+      }
+    });
   }
 
   String formatRupiah(dynamic amount) {
@@ -49,81 +74,104 @@ class _TagihanScreenState extends State<TagihanScreen> {
       ),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _allTagihan.isEmpty
-              ? const Center(child: Text('Belum ada data transaksi.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _allTagihan.length,
-                  itemBuilder: (context, index) {
-                    final t = _allTagihan[index];
-                    final isLunas = t['status'] == 'LUNAS';
+          : CustomScrollView(
+              slivers: [
+                // SEKSI BELUM BAYAR
+                _buildSliverHeader('BELUM BAYAR (${_pendingTagihan.length})', Colors.red),
+                _buildSliverList(_pendingTagihan, isLunas: false),
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isLunas ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(15),
-                        onTap: isLunas ? null : () => _showPaymentDialog(t),
-                        leading: CircleAvatar(
-                          backgroundColor: isLunas ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                          child: Icon(
-                            isLunas ? Icons.check_circle : Icons.pending_actions,
-                            color: isLunas ? Colors.green : Colors.red,
-                          ),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(child: Text(t['pelanggan']['nama'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                            _buildStatusBadge(isLunas),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 5),
-                            Text('Pemakaian: ${t['pemakaian']} m³', style: const TextStyle(fontSize: 12)),
-                            if (isLunas) Text('Metode: ${t['metode_bayar'] ?? '-'}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                          ],
-                        ),
-                        trailing: Text(
-                          formatRupiah(t['total_bayar']),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isLunas ? Colors.green : Colors.red,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                // DIVIDER & FILTER SEKSI LUNAS
+                _buildSliverHeader('SUDAH BAYAR (${_filteredLunas.length})', Colors.green),
+                _buildSliverFilter(),
+                
+                // SEKSI SUDAH BAYAR
+                _buildSliverList(_filteredLunas, isLunas: true),
+                
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
+            ),
     );
   }
 
-  Widget _buildStatusBadge(bool isLunas) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isLunas ? Colors.green : Colors.orange,
-        borderRadius: BorderRadius.circular(20),
+  Widget _buildSliverHeader(String title, Color color) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 25, 20, 10),
+        child: Row(
+          children: [
+            Container(width: 4, height: 20, color: color),
+            const SizedBox(width: 10),
+            Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
       ),
-      child: Text(
-        isLunas ? 'LUNAS' : 'PENDING',
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildSliverFilter() {
+    return SliverToBoxAdapter(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: ['Semua', 'Minggu', 'Bulan'].map((type) {
+            final isSelected = _filterType == type;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(type == 'Semua' ? 'Semua Waktu' : '$type Ini'),
+                selected: isSelected,
+                selectedColor: Colors.green.withOpacity(0.2),
+                labelStyle: TextStyle(color: isSelected ? Colors.green : Colors.grey, fontSize: 12),
+                onSelected: (val) {
+                  if (val) {
+                    setState(() => _filterType = type);
+                    _applyFilter();
+                  }
+                },
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverList(List<Map<String, dynamic>> list, {required bool isLunas}) {
+    if (list.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(child: Text('Tidak ada data.', style: TextStyle(color: Colors.grey))),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final t = list[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: isLunas ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1)),
+              ),
+              child: ListTile(
+                onTap: isLunas ? null : () => _showPaymentDialog(t),
+                leading: Icon(isLunas ? Icons.check_circle : Icons.pending, color: isLunas ? Colors.green : Colors.red),
+                title: Text(t['pelanggan']['nama'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text('Pakai: ${t['pemakaian']} m³ ${isLunas ? '(${t['metode_bayar']})' : ''}', style: const TextStyle(fontSize: 11)),
+                trailing: Text(formatRupiah(t['total_bayar']), 
+                    style: TextStyle(fontWeight: FontWeight.bold, color: isLunas ? Colors.green : Colors.red)),
+              ),
+            );
+          },
+          childCount: list.length,
+        ),
       ),
     );
   }
@@ -132,19 +180,11 @@ class _TagihanScreenState extends State<TagihanScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Proses Pembayaran'),
-        content: Text('Selesaikan pembayaran untuk ${t['pelanggan']['nama']} sebesar ${formatRupiah(t['total_bayar'])}?'),
+        title: const Text('Konfirmasi Bayar'),
+        content: Text('Pelanggan: ${t['pelanggan']['nama']}\nTotal: ${formatRupiah(t['total_bayar'])}'),
         actions: [
-          TextButton(
-            onPressed: () => _prosesBayar(t['id'], 'CASH'),
-            child: const Text('💰 CASH'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-            onPressed: () => _prosesBayar(t['id'], 'BANK'),
-            child: const Text('🏦 BANK', style: TextStyle(color: Colors.white)),
-          ),
+          TextButton(onPressed: () => _prosesBayar(t['id'], 'CASH'), child: const Text('💰 CASH')),
+          ElevatedButton(onPressed: () => _prosesBayar(t['id'], 'BANK'), child: const Text('🏦 BANK')),
         ],
       ),
     );
