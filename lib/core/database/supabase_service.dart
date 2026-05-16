@@ -63,6 +63,14 @@ class SupabaseService {
     }).eq('id', id);
   }
 
+  Future<void> updatePembayaranWithDate(String id, String metode, DateTime date) async {
+    await client.from('transaksi').update({
+      'status': 'LUNAS',
+      'metode_bayar': metode,
+      'tanggal_bayar': date.toIso8601String(),
+    }).eq('id', id);
+  }
+
   // --- CRUD Pengaturan ---
   Future<Map<String, dynamic>> getSettings() async {
     final response = await client.from('pengaturan').select().single();

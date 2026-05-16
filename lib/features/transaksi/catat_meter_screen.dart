@@ -225,7 +225,8 @@ class _CatatMeterScreenState extends State<CatatMeterScreen> {
         'meter_lalu': meterLalu,
         'meter_skrg': meterBaru,
         'pemakaian': pakai,
-        'tarif_per_kubik': harga,
+        'harga_saat_ini': harga,
+        'beban_saat_ini': beban,
         'total_bayar': total,
       });
 

@@ -18,6 +18,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
   
   String _filterType = 'Semua';
   bool _isLoading = true;
+  DateTime _selectedPaymentDate = DateTime.now();
 
   @override
   void initState() {
@@ -172,40 +173,59 @@ class _TagihanScreenState extends State<TagihanScreen> {
 
   void _showPaymentDialog(Map<String, dynamic> t) {
     final tglCatat = DateFormat('dd MMM yyyy').format(DateTime.parse(t['tanggal_catat']));
-    
+    _selectedPaymentDate = DateTime.now();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Konfirmasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
-            _buildDetailRow('Periode', tglCatat),
-            const Divider(),
-            _buildDetailRow('Meter Lalu', '${t['meter_lalu']} m³'),
-            _buildDetailRow('Meter Baru', '${t['meter_skrg']} m³'),
-            _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
-            _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
-            _buildDetailRow('Biaya Beban', formatRupiah(t['beban_saat_ini'] ?? 0)),
-            const Divider(),
-            _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.blue),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () => _prosesBayar(t['id'], 'CASH'),
-            icon: const Icon(Icons.money),
-            label: const Text('CASH'),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-            onPressed: () => _prosesBayar(t['id'], 'BANK'),
-            icon: const Icon(Icons.account_balance, color: Colors.white),
-            label: const Text('BANK', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Konfirmasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Pelanggan', t['pelanggan']['nama']),
+                _buildDetailRow('Periode', tglCatat),
+                const Divider(),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedPaymentDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => _selectedPaymentDate = picked);
+                    }
+                  },
+                  child: _buildDetailRow('Tgl Bayar (Klik)', DateFormat('dd MMM yyyy').format(_selectedPaymentDate), color: Colors.blue, isBold: true),
+                ),
+                _buildDetailRow('Meter Lalu', '${t['meter_lalu']} m³'),
+                _buildDetailRow('Meter Baru', '${t['meter_skrg']} m³'),
+                _buildDetailRow('Pemakaian', '${t['pemakaian']} m³'),
+                _buildDetailRow('Harga/m³', formatRupiah(t['harga_saat_ini'] ?? 0)),
+                _buildDetailRow('Biaya Beban', formatRupiah(t['beban_saat_ini'] ?? 0)),
+                const Divider(),
+                _buildDetailRow('Total Bayar', formatRupiah(t['total_bayar']), isBold: true, color: Colors.blue),
+              ],
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: () => _prosesBayar(t['id'], 'CASH', _selectedPaymentDate),
+                icon: const Icon(Icons.money),
+                label: const Text('CASH'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                onPressed: () => _prosesBayar(t['id'], 'BANK', _selectedPaymentDate),
+                icon: const Icon(Icons.account_balance, color: Colors.white),
+                label: const Text('BANK', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -259,10 +279,10 @@ class _TagihanScreenState extends State<TagihanScreen> {
     );
   }
 
-  void _prosesBayar(String id, String metode) async {
+  void _prosesBayar(String id, String metode, DateTime tgl) async {
     Navigator.pop(context);
     try {
-      await _supabaseService.updatePembayaran(id, metode);
+      await _supabaseService.updatePembayaranWithDate(id, metode, tgl);
       _loadData();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Berhasil dibayar via $metode")));
     } catch (e) {
