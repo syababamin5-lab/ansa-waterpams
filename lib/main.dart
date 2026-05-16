@@ -8,7 +8,7 @@ import 'core/constants/secrets.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/pelanggan/pelanggan_list_screen.dart';
 import 'features/transaksi/catat_meter_screen.dart';
-import 'features/settings/settings_screen.dart';
+import 'features/tagihan/tagihan_screen.dart';
 import 'features/riwayat/riwayat_screen.dart';
 
 void main() async {
@@ -58,6 +58,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const DashboardScreen(),
     const PelangganListScreen(),
     const CatatMeterScreen(),
+    const TagihanScreen(),
     const RiwayatScreen(),
   ];
 
@@ -92,6 +93,7 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Beranda'),
             BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Pelanggan'),
             BottomNavigationBarItem(icon: Icon(Icons.speed_rounded), label: 'Catat'),
+            BottomNavigationBarItem(icon: Icon(Icons.payment_rounded), label: 'Tagihan'),
             BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Riwayat'),
           ],
         ),
