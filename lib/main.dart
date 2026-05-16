@@ -22,7 +22,7 @@ void main() async {
   
   runApp(
     DevicePreview(
-      enabled: true,
+      enabled: false, // Dimatikan untuk persiapan rilis (Build APK)
       builder: (context) => const AnsaWaterApp(),
     ),
   );
