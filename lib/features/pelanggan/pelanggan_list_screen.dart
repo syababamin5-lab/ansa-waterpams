@@ -164,7 +164,34 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
       final history = await _supabaseService.getTransaksiByPelanggan(p['id']);
       Navigator.pop(context); // Close loading
 
-      final recentHistory = history.length > 12 ? history.sublist(history.length - 12) : history;
+      // GROUPING DATA PER BULAN
+      Map<String, Map<String, dynamic>> grouped = {};
+      for (var t in history) {
+        final date = DateTime.parse(t['tanggal_catat']);
+        final key = DateFormat('yyyy-MM').format(date); // Key unik per bulan-tahun
+        
+        if (!grouped.containsKey(key)) {
+          grouped[key] = {
+            'tanggal_catat': t['tanggal_catat'],
+            'pemakaian': 0.0,
+            'total_bayar': 0.0,
+            'meter_lalu': t['meter_lalu'],
+            'meter_skrg': t['meter_skrg'],
+          };
+        }
+        
+        grouped[key]!['pemakaian'] += (t['pemakaian'] as num).toDouble();
+        grouped[key]!['total_bayar'] += (t['total_bayar'] as num).toDouble();
+        grouped[key]!['meter_skrg'] = t['meter_skrg']; // Update ke meteran terbaru bulan itu
+      }
+
+      // Sortir berdasarkan tanggal dan ambil 12 bulan terakhir
+      var sortedKeys = grouped.keys.toList()..sort();
+      var recentHistory = sortedKeys.map((k) => grouped[k]!).toList();
+      if (recentHistory.length > 12) {
+        recentHistory = recentHistory.sublist(recentHistory.length - 12);
+      }
+
       bool isChartView = true;
 
       if (!mounted) return;
