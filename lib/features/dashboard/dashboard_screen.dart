@@ -197,22 +197,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_chartData.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Belum ada data pemakaian')));
 
+    // Jika data cuma 1, tambahkan titik 0 di depannya agar grafik muncul garisnya
+    List<FlSpot> spots = [];
+    if (_chartData.length == 1) {
+      spots.add(const FlSpot(-1, 0)); // Titik bayangan 0
+      spots.add(FlSpot(0, (_chartData[0]['pemakaian'] as num).toDouble()));
+    } else {
+      spots = _chartData.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), (entry.value['pemakaian'] as num).toDouble());
+      }).toList();
+    }
+
+    // Hitung Max Y untuk skala yang pas
+    double maxY = 0;
+    for (var s in spots) { if (s.y > maxY) maxY = s.y; }
+    maxY = maxY == 0 ? 10 : maxY * 1.3; // Tambah ruang 30% di atas
+
     return Container(
       height: 250,
-      padding: const EdgeInsets.fromLTRB(10, 25, 25, 10),
+      padding: const EdgeInsets.fromLTRB(15, 25, 25, 10),
       decoration: AppTheme.cardDecoration,
       child: LineChart(
         LineChartData(
+          minY: 0,
+          maxY: maxY,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.1), strokeWidth: 1),
+            getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.05), strokeWidth: 1),
           ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 30,
+                reservedSize: 40,
                 getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(fontSize: 9, color: Colors.grey)),
               )
             ),
@@ -223,7 +241,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   int idx = value.toInt();
                   if (idx < 0 || idx >= _chartData.length) return const SizedBox();
                   final date = DateTime.parse(_chartData[idx]['tanggal']);
-                  return Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold));
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(DateFormat('MMM').format(date), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                  );
                 },
               ),
             ),
@@ -233,9 +254,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              spots: _chartData.asMap().entries.map((entry) {
-                return FlSpot(entry.key.toDouble(), (entry.value['pemakaian'] as num).toDouble());
-              }).toList(),
+              spots: spots,
               isCurved: true,
               gradient: LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.5)]),
               barWidth: 4,
