@@ -202,6 +202,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       
       // Membuka menu Berbagi File PDF
       await _pdfService.shareInvoice(data);
+      
+      // Beri tahu user cara melampirkan di Chrome/Web
+      _showSnack("File PDF terdownload. Klik ikon 📎 di WA lalu pilih file tersebut.");
 
       // Tetap buka chat WA untuk mengirim pesan teks sebagai pengantar
       final pamsimas = _settings?['nama_pamsimas'] ?? 'ANSA WATER';
