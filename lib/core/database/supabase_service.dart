@@ -17,13 +17,13 @@ class SupabaseService {
     return Map<String, dynamic>.from(response);
   }
 
-  Future<void> insertPelanggan(String nama, String alamat, String telepon, double meterAwal) async {
+  Future<void> insertPelanggan(Map<String, dynamic> data) async {
     await client.from('pelanggan').insert({
-      'nama': nama,
-      'alamat': alamat,
-      'telepon': telepon,
-      'meter_awal': meterAwal,
-      'meter_terakhir': meterAwal,
+      'nama': data['nama'],
+      'alamat': data['alamat'],
+      'telepon': data['telepon'],
+      'meter_awal': data['meter_terakhir'],
+      'meter_terakhir': data['meter_terakhir'],
     });
   }
 
