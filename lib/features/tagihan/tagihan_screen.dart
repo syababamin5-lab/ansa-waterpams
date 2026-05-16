@@ -12,7 +12,7 @@ class TagihanScreen extends StatefulWidget {
 
 class _TagihanScreenState extends State<TagihanScreen> {
   final SupabaseService _supabaseService = SupabaseService();
-  List<Map<String, dynamic>> _tagihanBelumBayar = [];
+  List<Map<String, dynamic>> _allTagihan = [];
   bool _isLoading = true;
 
   @override
@@ -25,7 +25,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
     try {
       final transaksi = await _supabaseService.getAllTransaksi();
       setState(() {
-        _tagihanBelumBayar = transaksi.where((t) => t['status'] != 'LUNAS').toList();
+        _allTagihan = transaksi;
         _isLoading = false;
       });
     } catch (e) {
@@ -44,26 +44,69 @@ class _TagihanScreenState extends State<TagihanScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Tagihan Belum Bayar'),
+        title: const Text('Kelola Tagihan'),
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData)],
       ),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _tagihanBelumBayar.isEmpty
-              ? const Center(child: Text('Semua tagihan sudah lunas! 🎉'))
+          : _allTagihan.isEmpty
+              ? const Center(child: Text('Belum ada data transaksi.'))
               : ListView.builder(
                   padding: const EdgeInsets.all(20),
-                  itemCount: _tagihanBelumBayar.length,
+                  itemCount: _allTagihan.length,
                   itemBuilder: (context, index) {
-                    final t = _tagihanBelumBayar[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                    final t = _allTagihan[index];
+                    final isLunas = t['status'] == 'LUNAS';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isLunas ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
                       child: ListTile(
-                        onTap: () => _showPaymentDialog(t),
-                        title: Text(t['pelanggan']['nama'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('Pemakaian: ${t['pemakaian']} m³'),
-                        trailing: Text(formatRupiah(t['total_bayar']), 
-                            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        contentPadding: const EdgeInsets.all(15),
+                        onTap: isLunas ? null : () => _showPaymentDialog(t),
+                        leading: CircleAvatar(
+                          backgroundColor: isLunas ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                          child: Icon(
+                            isLunas ? Icons.check_circle : Icons.pending_actions,
+                            color: isLunas ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(t['pelanggan']['nama'], style: const TextStyle(fontWeight: FontWeight.bold))),
+                            _buildStatusBadge(isLunas),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 5),
+                            Text('Pemakaian: ${t['pemakaian']} m³', style: const TextStyle(fontSize: 12)),
+                            if (isLunas) Text('Metode: ${t['metode_bayar'] ?? '-'}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                          ],
+                        ),
+                        trailing: Text(
+                          formatRupiah(t['total_bayar']),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isLunas ? Colors.green : Colors.red,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -71,10 +114,25 @@ class _TagihanScreenState extends State<TagihanScreen> {
     );
   }
 
+  Widget _buildStatusBadge(bool isLunas) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isLunas ? Colors.green : Colors.orange,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        isLunas ? 'LUNAS' : 'PENDING',
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   void _showPaymentDialog(Map<String, dynamic> t) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Proses Pembayaran'),
         content: Text('Selesaikan pembayaran untuk ${t['pelanggan']['nama']} sebesar ${formatRupiah(t['total_bayar'])}?'),
         actions: [
@@ -83,8 +141,9 @@ class _TagihanScreenState extends State<TagihanScreen> {
             child: const Text('💰 CASH'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
             onPressed: () => _prosesBayar(t['id'], 'BANK'),
-            child: const Text('🏦 BANK'),
+            child: const Text('🏦 BANK', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -98,10 +157,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
       _loadData();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Berhasil dibayar via $metode")));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("GAGAL: Pastikan sudah jalankan SQL di Supabase!\n$e"),
-        duration: const Duration(seconds: 5),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
     }
   }
 }
