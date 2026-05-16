@@ -43,7 +43,15 @@ class _PelangganListScreenState extends State<PelangganListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(title: const Text('Data Pelanggan')),
+      appBar: AppBar(
+        title: const Text('Data Pelanggan'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshPelanggan,
+          ),
+        ],
+      ),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
